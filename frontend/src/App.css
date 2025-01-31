@@ -40,18 +40,15 @@ img {
 
 .tooltip {
     position: fixed;
-    /* Ставим фиксированное положение для стабильности */
     background-color: white;
     border: 1px solid #ccc;
     padding: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    z-index: 20;
+    z-index: 9999;
     white-space: nowrap;
     pointer-events: none;
-    /* Отключаем взаимодействие */
     transition: opacity 0.2s ease, transform 0.2s ease;
 }
-
 
 .parts-table {
     width: 50%;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import ReactDOM from "react-dom";
 import "./App.css";
 
 const App = () => {
@@ -7,6 +8,15 @@ const App = () => {
       <SlideViewer />
       <PartsTable />
     </div>
+  );
+};
+
+const Tooltip = ({ style, children }) => {
+  return ReactDOM.createPortal(
+    <div className="tooltip" style={style}>
+      {children}
+    </div>,
+    document.body
   );
 };
 
@@ -58,11 +68,11 @@ const SlideViewer = () => {
               onMouseLeave={handleMouseLeave}
             >
               {hoveredPart?.id === part.id && (
-                <div className="tooltip" style={tooltipStyle}>
+                <Tooltip style={tooltipStyle}>
                   <p>Артикул: {part.part_number}</p>
                   <p>Название: {part.name || "Не указано"}</p>
                   <p>Цена: {part.price} руб.</p>
-                </div>
+                </Tooltip>
               )}
             </div>
           ))}
