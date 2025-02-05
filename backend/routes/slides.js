@@ -39,4 +39,37 @@ router.get('/model/:modelId', async (req, res) => {
     }
 });
 
+// **Добавляем POST для создания слайда**
+router.post('/', async (req, res) => {
+    try {
+        const { model_id, slide_number, image_path, image_width, image_height } = req.body;
+        if (!model_id || !slide_number || !image_path) {
+            return res.status(400).json({ error: 'Отсутствуют обязательные поля' });
+        }
+
+        const slide = await Slide.create({ model_id, slide_number, image_path, image_width, image_height });
+        res.status(201).json(slide);
+    } catch (error) {
+        console.error('Ошибка при добавлении слайда:', error);
+        res.status(500).json({ error: 'Ошибка при добавлении слайда' });
+    }
+});
+
+// **Добавляем POST для создания слайда**
+router.delete('/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const deleted = await Slide.destroy({ where: { id } });
+
+        if (deleted) {
+            res.json({ message: `Слайд ${id} удалён` });
+        } else {
+            res.status(404).json({ message: `Слайд ${id} не найден` });
+        }
+    } catch (error) {
+        console.error('Ошибка при удалении слайда:', error);
+        res.status(500).json({ message: 'Ошибка сервера' });
+    }
+});
+
 module.exports = router;

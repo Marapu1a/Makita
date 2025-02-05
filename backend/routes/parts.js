@@ -25,4 +25,15 @@ router.get('/model/:modelId', async (req, res) => {
     }
 });
 
+router.post('/', async (req, res) => {
+    console.log("POST /api/parts вызван с данными:", req.body);
+    try {
+        const part = await Part.create(req.body);
+        res.json(part);
+    } catch (error) {
+        console.error("❌ Ошибка при добавлении детали:", error);
+        res.status(500).json({ error: 'Ошибка при добавлении детали', details: error.message });
+    }
+});
+
 module.exports = router;

@@ -4,11 +4,18 @@ const { Sequelize } = require('sequelize');
 const sequelize = new Sequelize('makita', 'postgres', '2831742dfcz', {
     host: 'localhost',
     dialect: 'postgres',
+    logging: false,
 });
 
-// Проверка соединения
-sequelize.authenticate()
-    .then(() => console.log('Database connected!'))
-    .catch(err => console.error('Error connecting to database:', err));
+async function testConnection() {
+    try {
+        await sequelize.authenticate();
+        console.log('✅ Успешное подключение к БД');
+    } catch (error) {
+        console.error('❌ Ошибка подключения к БД:', error);
+    }
+}
+
+testConnection();
 
 module.exports = sequelize;
