@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { fetchCategories, fetchModelsByCategory } from "../utils/api"; // API-функции
 
 type Category = {
@@ -107,9 +108,11 @@ export default function CategoryGrid() {
       ) : models ? (
         <div className="grid grid-cols-4 gap-6">
           {models.map((model) => (
-            <div key={model.id} className="bg-white p-4 rounded-md shadow-md">
-              <p className="text-center font-semibold">{model.name}</p>
-            </div>
+            <Link to={`/model/${model.id}`}>
+              <div key={model.id} className="bg-white p-4 rounded-md shadow-md">
+                <p className="text-center font-semibold">{model.name}</p>
+              </div>
+            </Link>
           ))}
         </div>
       ) : (

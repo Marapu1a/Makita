@@ -17,7 +17,7 @@ options = webdriver.ChromeOptions()
 driver = webdriver.Chrome(options=options)
 
 # URL главной страницы
-base_url = 'https://servismakita.ru/catalog/dreli/'
+base_url = 'https://servismakita.ru/catalog/shlifmashiny/'
 driver.get(base_url)
 time.sleep(5)
 

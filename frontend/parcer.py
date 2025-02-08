@@ -62,10 +62,30 @@ for category_id, category_name_dirty in categories:
                     "x": None,
                     "y": None,
                     "width": None,
-                    "height": None
+                    "height": None,
+                    "slide_id": None
                 })
         
         print(f"Найдено {len(parts_data)} деталей для {model_name}")
+
+        # Записываем все детали сразу, чтобы гарантированно они были в БД
+        for part_data in parts_data:
+            part_data["order"] = part_data["order"] or -1  # Если номера нет, ставим -1
+            
+            cursor.execute("""
+                INSERT INTO parts (model_id, number, part_number, name, price, quantity, createdat, updatedat)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+                ON CONFLICT (model_id, number) 
+                DO UPDATE SET 
+                    name = EXCLUDED.name,
+                    price = EXCLUDED.price,
+                    quantity = EXCLUDED.quantity,
+                    updatedat = NOW();
+            """, (
+                model_id, part_data["order"], part_data["article"], part_data["name"],
+                part_data["price"], part_data["quantity"]
+            ))
+            conn.commit()
         
         # Логика обработки слайдов
         slide_number = 1
@@ -95,10 +115,10 @@ for category_id, category_name_dirty in categories:
                     if image_src:
                         response = requests.get(image_src, stream=True)
                         if response.status_code == 200:
-                            folder_path = f"public/images/{category_name}/{model_name}"
+                            folder_path = f"public/images/{sanitize_filename(category_name)}/{model_name}"
                             os.makedirs(folder_path, exist_ok=True)
                             
-                            image_name = f"{model_name}_{slide_number}.webp"
+                            image_name = f"{sanitize_filename(model_name)}_{slide_number}.webp"
                             image_path = os.path.join(folder_path, image_name)
                             
                             with open(image_path, "wb") as file:
@@ -117,6 +137,12 @@ for category_id, category_name_dirty in categories:
                                     image_height = EXCLUDED.image_height,
                                     updatedat = NOW();
                             """, (model_id, slide_number, image_name, image_width, image_height))
+
+                            cursor.execute("""
+                                SELECT id FROM slides WHERE model_id = %s AND slide_number = %s
+                            """, (model_id, slide_number))
+                            slide_row = cursor.fetchone()
+                            slide_id = slide_row[0] if slide_row else None
                         
                     found_parts = active_slide.find_elements(By.CSS_SELECTOR, 'div[item^="fx_draft_i__"]')
                     found_part_numbers = [part.get_attribute("item").replace("fx_draft_i__", "") for part in found_parts]
@@ -125,10 +151,11 @@ for category_id, category_name_dirty in categories:
                     # Проставляем координаты деталей
                     for part_data in parts_data:
                         part_number = part_data["order"]
-                        if part_number is None:
-                            continue  # Если нет номера детали — пропускаем
+                        
+                        # Если детали нет в найденных на слайде, просто пропускаем её
+                        if part_number is None or part_number not in found_part_numbers:
+                            continue
 
-                        # Пробуем найти координаты
                         try:
                             coord_div = active_slide.find_element(By.CSS_SELECTOR, f'div[item="fx_draft_i__{part_number}"]')
                             style = coord_div.get_attribute("style")
@@ -137,13 +164,11 @@ for category_id, category_name_dirty in categories:
                             part_data["y"] = float(style.split("margin-top:")[1].split("px")[0].strip())
                             part_data["width"] = coord_div.size.get("width", None)
                             part_data["height"] = coord_div.size.get("height", None)
+                            part_data["slide_id"] = slide_id  # Обновляем slide_id
 
-                            print(f"✅ Координаты для {part_number}: x={part_data['x']}, y={part_data['y']}, width={part_data['width']}, height={part_data['height']}")
-
-                            # Записываем детали с координатами
                             cursor.execute("""
-                                INSERT INTO parts (model_id, number, part_number, name, price, quantity, x_coord, y_coord, width, height, createdat, updatedat)
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                                INSERT INTO parts (model_id, slide_id, number, part_number, name, price, quantity, x_coord, y_coord, width, height, createdat, updatedat)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
                                 ON CONFLICT (model_id, number) 
                                 DO UPDATE SET 
                                     name = EXCLUDED.name,
@@ -153,29 +178,30 @@ for category_id, category_name_dirty in categories:
                                     y_coord = EXCLUDED.y_coord,
                                     width = EXCLUDED.width,
                                     height = EXCLUDED.height,
+                                    slide_id = COALESCE(EXCLUDED.slide_id, parts.slide_id),
                                     updatedat = NOW();
                             """, (
-                                model_id, part_data["order"], part_data["article"],
-                                part_data["name"], part_data["price"], part_data["quantity"],
-                                part_data["x"], part_data["y"], part_data["width"], part_data["height"]
+                                model_id, slide_id, part_data["order"], part_data["article"], part_data["name"],
+                                part_data["price"], part_data["quantity"], part_data["x"], part_data["y"],
+                                part_data["width"], part_data["height"]
                             ))
                             conn.commit()
 
                         except Exception:
-                            # Если координаты не найдены, записываем деталь отдельно без них
                             print(f"⚠️ Координаты для {part_number} не найдены, записываем без них.")
 
                             cursor.execute("""
-                                INSERT INTO parts (model_id, number, part_number, name, price, quantity, createdat, updatedat)
-                                VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+                                INSERT INTO parts (model_id, slide_id, number, part_number, name, price, quantity, createdat, updatedat)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
                                 ON CONFLICT (model_id, number) 
                                 DO UPDATE SET 
                                     name = EXCLUDED.name,
                                     price = EXCLUDED.price,
                                     quantity = EXCLUDED.quantity,
+                                    slide_id = COALESCE(EXCLUDED.slide_id, parts.slide_id),
                                     updatedat = NOW();
                             """, (
-                                model_id, part_data["order"], part_data["article"],
+                                model_id, slide_id, part_data["order"], part_data["article"],
                                 part_data["name"], part_data["price"], part_data["quantity"]
                             ))
                             conn.commit()
@@ -194,6 +220,7 @@ for category_id, category_name_dirty in categories:
 
                     print(f"📥 SVG сохранён: {svg_path}")
 
+                    # Попытка получить фоновое изображение (оно дает размеры)
                     try:
                         fig_image = active_slide.find_element(By.CSS_SELECTOR, "#fig_image")
                         bg_style = fig_image.get_attribute("style")
@@ -206,7 +233,7 @@ for category_id, category_name_dirty in categories:
 
                             response = requests.get(bg_url, stream=True)
                             if response.status_code == 200:
-                                bg_name = f"{model_name}_{slide_number}_bg.webp"
+                                bg_name = f"{model_name}_{slide_number}.webp"
                                 bg_path = os.path.join(folder_path, bg_name)
 
                                 with open(bg_path, "wb") as file:
@@ -214,8 +241,73 @@ for category_id, category_name_dirty in categories:
                                         file.write(chunk)
 
                                 print(f"📥 Фоновое изображение схемы сохранено: {bg_path}")
+
+                        # **Правильный парсинг width/height из background-size**
+                        width_match = re.search(r"background-size:\s*(\d+(\.\d+)?)px\s*(\d+(\.\d+)?)px", bg_style)
+                        if width_match:
+                            image_width = float(width_match.group(1))
+                            image_height = float(width_match.group(3))
+                        else:
+                            image_width, image_height = None, None
+
                     except Exception as e:
                         print(f"⚠️ Ошибка при скачивании фонового изображения: {e}")
+                        image_width, image_height = None, None
+
+                    # **ЗАПИСЫВАЕМ ДАННЫЕ О СЛАЙДЕ В БД**
+                    cursor.execute("""
+                        INSERT INTO slides (model_id, slide_number, image_path, image_width, image_height, createdat, updatedat)
+                        VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
+                        ON CONFLICT (model_id, slide_number)
+                        DO UPDATE SET 
+                            image_path = EXCLUDED.image_path,
+                            image_width = EXCLUDED.image_width,
+                            image_height = EXCLUDED.image_height,
+                            updatedat = NOW();
+                    """, (model_id, slide_number, bg_name, image_width, image_height))
+
+                    cursor.execute("""
+                        SELECT id FROM slides WHERE model_id = %s AND slide_number = %s
+                    """, (model_id, slide_number))
+                    slide_row = cursor.fetchone()
+                    slide_id = slide_row[0] if slide_row else None
+
+                    # **ПАРСИМ SVG**
+                    try:
+                        from xml.etree import ElementTree as ET
+                        tree = ET.parse(svg_path)
+                        root = tree.getroot()
+                        svg_parts = root.findall(".//{http://www.w3.org/2000/svg}use")
+
+                        svg_found_part_numbers = []  # Список найденных деталей в этом конкретном SVG
+
+                        for use in svg_parts:
+                            href = use.get("{http://www.w3.org/1999/xlink}href")
+                            if href:
+                                match = re.search(r"(\d+)", href)  # Достаем только цифры
+                                if match:
+                                    part_number = match.group(1)
+                                    svg_found_part_numbers.append(part_number)  # Сохраняем найденные номера деталей
+
+                        print(f"🔎 Найдено {len(svg_found_part_numbers)} деталей в SVG: {svg_found_part_numbers}")
+
+                        # **ЗАПИСЫВАЕМ ТОЛЬКО ДЕТАЛИ С ЭТОГО КОНКРЕТНОГО СЛАЙДА**
+                        for part_data in parts_data:
+                            if part_data["order"] and part_data["order"] in svg_found_part_numbers:
+                                part_data["slide_id"] = slide_id  # Проставляем `slide_id`
+                                
+                                cursor.execute("""
+                                    UPDATE parts 
+                                    SET slide_id = %s 
+                                    WHERE model_id = %s 
+                                    AND number = %s 
+                                    AND (slide_id IS NULL OR slide_id <> %s)
+                                """, (slide_id, model_id, part_data["order"], slide_id))  
+                                
+                                conn.commit()
+
+                    except Exception as e:
+                        print(f"❌ Ошибка при разборе SVG-файла: {e}")
 
                 # Переход к следующему слайду
                 try:

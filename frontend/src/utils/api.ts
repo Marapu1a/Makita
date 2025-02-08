@@ -37,3 +37,10 @@ export const fetchModelsByCategory = async (categoryId: string) => {
         return [];
     }
 };
+
+// Получаем детали по названию модели
+export const fetchPartsByModel = async (modelId: string) => {
+    const res = await fetch(`${API_URL}/parts/model/${modelId}`);
+    if (!res.ok) throw new Error("Ошибка загрузки деталей модели");
+    return res.json();
+};

@@ -23,8 +23,9 @@ const Model = sequelize.define('Model', {
 
 // Модель Part
 const Part = sequelize.define('Part', {
-    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true }, // Уникальный id детали
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     model_id: { type: DataTypes.INTEGER, allowNull: false },
+    slide_id: { type: DataTypes.INTEGER, allowNull: true },
     number: { type: DataTypes.INTEGER, allowNull: false },
     name: { type: DataTypes.STRING, allowNull: true },
     part_number: { type: DataTypes.STRING, allowNull: false },
@@ -79,6 +80,9 @@ Part.belongsTo(Model, { foreignKey: 'model_id' });
 
 Model.hasMany(Slide, { foreignKey: 'model_id' });
 Slide.belongsTo(Model, { foreignKey: 'model_id' });
+
+Slide.hasMany(Part, { foreignKey: 'slide_id' });
+Part.belongsTo(Slide, { foreignKey: 'slide_id' });
 
 const reset = process.argv.includes('--reset'); // Запуск с аргументом --reset удалит всё
 sequelize.sync({ force: reset, alter: !reset })
