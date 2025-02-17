@@ -1,46 +1,74 @@
+import axios from "axios";
+
 const API_URL = "http://localhost:5000/api";
 const IMAGE_BASE_URL = "/images/categories/";
 
+// Функция для приведения названий файлов в порядок
+const sanitizeFileName = (name: string) =>
+    name.replace(/\s+/g, "_").replace(/[\/\\]/g, "_");
+
+// Получение всех категорий с добавлением путей к изображениям
 export const fetchCategories = async () => {
     try {
-        const response = await fetch(`${API_URL}/categories`);
-        if (!response.ok) throw new Error("Ошибка загрузки категорий");
-        const data = await response.json();
-
-        // Добавляем пути к изображениям
-        return data.map((category: { id: string; name: string }) => ({
-            ...category,
-            img: `${IMAGE_BASE_URL}${category.name.replace(/\s+/g, "_").replace(/\//g, "_")}.jpg`
-        }));
+        const response = await axios.get(`${API_URL}/categories`);
+        if (response.data.success) {
+            return response.data.data.map((category: { name: string; children?: any[] }) => ({
+                ...category,
+                img: `${IMAGE_BASE_URL}${sanitizeFileName(category.name)}.jpg`,
+                children: category.children || [],
+            }));
+        } else {
+            console.error("Ошибка загрузки категорий:", response.data.error);
+            return [];
+        }
     } catch (error) {
         console.error("Ошибка при загрузке категорий:", error);
         return [];
     }
 };
 
-// Функция для получения моделей по category_id
-export async function fetchModels(categoryId: string) {
-    const response = await fetch(`${API_URL}/models?category_id=${categoryId}`);
-    if (!response.ok) {
-        throw new Error("Ошибка при загрузке моделей");
-    }
-    return response.json();
-}
-
+// Получение моделей по `category_id`
 export const fetchModelsByCategory = async (categoryId: string) => {
     try {
-        const response = await fetch(`${API_URL}/models?category_id=${categoryId}`);
-        if (!response.ok) throw new Error("Ошибка загрузки моделей");
-        return response.json();
+        const response = await axios.get(`${API_URL}/models`, {
+            params: { category_id: categoryId },
+        });
+        return response.data.success ? response.data.data : [];
     } catch (error) {
-        console.error(error);
+        console.error("Ошибка загрузки моделей:", error);
         return [];
     }
 };
 
-// Получаем детали по названию модели
+// Получение одной модели по `model_id`
+export const fetchModelById = async (modelId: string) => {
+    try {
+        const response = await axios.get(`${API_URL}/models/${modelId}`);
+        return response.data.success ? response.data.data : null;
+    } catch (error) {
+        console.error("Ошибка загрузки модели:", error);
+        return null;
+    }
+};
+
+// Получение деталей по `model_id`
 export const fetchPartsByModel = async (modelId: string) => {
-    const res = await fetch(`${API_URL}/parts/model/${modelId}`);
-    if (!res.ok) throw new Error("Ошибка загрузки деталей модели");
-    return res.json();
+    try {
+        const response = await axios.get(`${API_URL}/parts/model/${modelId}`);
+        return response.data.success ? response.data.data : [];
+    } catch (error) {
+        console.error("Ошибка загрузки деталей модели:", error);
+        return [];
+    }
+};
+
+// Получение слайдов по `model_id`
+export const fetchSlidesByModel = async (modelId: string) => {
+    try {
+        const response = await axios.get(`${API_URL}/slides/model/${modelId}`);
+        return response.data.success ? response.data.data : [];
+    } catch (error) {
+        console.error("Ошибка получения слайдов:", error);
+        return [];
+    }
 };

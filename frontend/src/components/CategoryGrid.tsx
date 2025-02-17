@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { fetchCategories, fetchModelsByCategory } from "../utils/api"; // API-функции
 
 type Category = {
@@ -29,87 +29,52 @@ const addImagesToCategories = (categories: Category[]): Category[] => {
 };
 
 export default function CategoryGrid() {
+  const { categoryId } = useParams(); // Получаем categoryId из URL
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
-  const [currentCategories, setCurrentCategories] = useState<Category[] | null>(
-    null
-  );
   const [models, setModels] = useState<Model[] | null>(null);
-  const [history, setHistory] = useState<Category[][]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadCategories = async () => {
-      const data = await fetchCategories();
-      setCategories(addImagesToCategories(data));
+      setLoading(true);
+      if (categoryId) {
+        // Если есть categoryId, загружаем модели
+        const data = await fetchModelsByCategory(categoryId);
+        setModels(data);
+      } else {
+        // Если categoryId нет, загружаем категории
+        const data = await fetchCategories();
+        setCategories(addImagesToCategories(data));
+      }
       setLoading(false);
     };
+
     loadCategories();
-  }, []);
-
-  const handleCategoryClick = (category: Category) => {
-    if (category.children && category.children.length > 0) {
-      setHistory([...history, currentCategories || categories]); // Запоминаем текущий уровень
-      setCurrentCategories(category.children);
-      setModels(null);
-    } else {
-      loadModels(category.id);
-    }
-  };
-
-  const loadModels = async (categoryId: string) => {
-    setHistory([...history, currentCategories || categories]);
-    setCurrentCategories(null);
-    setModels(null);
-    const data = await fetchModelsByCategory(categoryId);
-    setModels(data);
-  };
-
-  const handleBack = () => {
-    if (history.length > 0) {
-      const previousCategories = history.pop();
-      setHistory([...history]);
-      setCurrentCategories(previousCategories || null);
-      setModels(null);
-    }
-  };
+  }, [categoryId]);
 
   if (loading) return <div>Загрузка...</div>;
 
+  const handleBack = () => {
+    navigate(-1); // Возврат на предыдущую страницу
+  };
+
   return (
     <div className="flex flex-col items-center">
-      {(currentCategories || models) && (
+      {categoryId && (
         <button
           onClick={handleBack}
-          className={`mb-4 text-blue-600 hover:underline ${
-            history.length === 0 ? "hidden" : ""
-          }`}
+          className="mb-4 text-blue-600 hover:underline"
         >
           ⬅ Назад
         </button>
       )}
 
-      {currentCategories ? (
-        <div className="grid grid-cols-4 gap-6 flex-1">
-          {currentCategories.map((category) => (
-            <div
-              key={category.id}
-              className="bg-white p-4 rounded-md shadow-md cursor-pointer hover:bg-gray-100"
-              onClick={() => handleCategoryClick(category)}
-            >
-              <img
-                src={category.img}
-                alt={category.name}
-                className="w-full h-32 object-contain mb-2"
-              />
-              <p className="text-center font-semibold">{category.name}</p>
-            </div>
-          ))}
-        </div>
-      ) : models ? (
+      {models ? (
         <div className="grid grid-cols-4 gap-6">
           {models.map((model) => (
-            <Link to={`/model/${model.id}`}>
-              <div key={model.id} className="bg-white p-4 rounded-md shadow-md">
+            <Link key={model.id} to={`/model/${model.id}`}>
+              <div className="bg-white p-4 rounded-md shadow-md">
                 <p className="text-center font-semibold">{model.name}</p>
               </div>
             </Link>
@@ -118,18 +83,16 @@ export default function CategoryGrid() {
       ) : (
         <div className="grid grid-cols-4 gap-6 flex-1">
           {categories.map((category) => (
-            <div
-              key={category.id}
-              className="bg-white p-4 rounded-md shadow-md cursor-pointer hover:bg-gray-100"
-              onClick={() => handleCategoryClick(category)}
-            >
-              <img
-                src={category.img}
-                alt={category.name}
-                className="w-full h-32 object-contain mb-2"
-              />
-              <p className="text-center font-semibold">{category.name}</p>
-            </div>
+            <Link key={category.id} to={`/categories/${category.id}`}>
+              <div className="bg-white p-4 rounded-md shadow-md cursor-pointer hover:bg-gray-100">
+                <img
+                  src={category.img}
+                  alt={category.name}
+                  className="w-full h-32 object-contain mb-2"
+                />
+                <p className="text-center font-semibold">{category.name}</p>
+              </div>
+            </Link>
           ))}
         </div>
       )}

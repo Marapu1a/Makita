@@ -1,34 +1,59 @@
 const express = require("express");
+const { Model, Categories } = require("../models");
 const router = express.Router();
-const { Model } = require("../models"); // Подключаем модель
 
-// Получить модели по category_id
 router.get("/", async (req, res) => {
     try {
         const { category_id } = req.query;
-
         if (!category_id) {
-            return res.status(400).json({ error: "Не указан category_id" });
+            return res.status(400).json({ success: false, error: "Не указан category_id" });
         }
 
-        const models = await Model.findAll({ where: { category_id } });
+        const models = await Model.findAll({
+            where: { category_id },
+            include: [{ model: Categories, as: "Category", attributes: ["name"] }],
+        });
 
-        res.json(models);
+        const modelsWithCategory = models.map((model) => ({
+            id: model.id,
+            name: model.name,
+            image_path: model.image_path,
+            category_id: model.category_id,
+            category_name: model.Category?.name || "Неизвестно",
+        }));
+
+        res.json({ success: true, data: modelsWithCategory });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Ошибка сервера" });
+        console.error("Ошибка при получении моделей:", err);
+        res.status(500).json({ success: false, error: "Ошибка сервера" });
     }
 });
 
-// Добавить новую модель
-router.post("/", async (req, res) => {
-    const { name, image_path, category_id } = req.body;
+// Получение одной модели по `modelId`
+router.get("/:modelId", async (req, res) => {
     try {
-        const newModel = await Model.create({ name, image_path, category_id });
-        res.json(newModel);
+        const { modelId } = req.params;
+
+        const model = await Model.findOne({
+            where: { id: modelId },
+            include: [{ model: Categories, as: "Category", attributes: ["name"] }],
+        });
+
+        if (!model) {
+            return res.status(404).json({ success: false, error: "Модель не найдена" });
+        }
+
+        res.json({
+            success: true,
+            data: {
+                id: model.id,
+                name: model.name,
+                category_name: model.Category?.name || "Неизвестно",
+            },
+        });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Ошибка при добавлении модели" });
+        console.error("Ошибка при получении модели:", err);
+        res.status(500).json({ success: false, error: "Ошибка сервера" });
     }
 });
 

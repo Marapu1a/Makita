@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Catalog from "./pages/Catalog";
-import ModelPage from "./pages/ModelPage";
+import CategoryGrid from "./components/CategoryGrid";
+import ModelDetails from "./pages/ModelDetails";
 import "./index.css";
 
 function App() {
@@ -8,7 +9,8 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Catalog />} />
-        <Route path="/model/:modelId" element={<ModelPage />} />
+        <Route path="/categories/:categoryId" element={<CategoryGrid />} />
+        <Route path="/model/:modelId" element={<ModelDetails />} />
       </Routes>
     </Router>
   );

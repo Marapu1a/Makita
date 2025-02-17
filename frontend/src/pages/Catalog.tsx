@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import Sidebar from "../components/Sidebar";
 import CategoryGrid from "../components/CategoryGrid";
 import { fetchCategories } from "../utils/api";
 
