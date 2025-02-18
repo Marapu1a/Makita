@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import {
   fetchSlidesByModel,
@@ -40,11 +40,10 @@ const ModelDetails = () => {
   const [parts, setParts] = useState<Part[]>([]);
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
   const [hoveredPart, setHoveredPart] = useState<Part | null>(null);
-  const [loading, setLoading] = useState(true);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
-      setLoading(true);
       const slidesData = await fetchSlidesByModel(modelId!);
       const modelData = await fetchModelById(modelId!);
       const partsData = await fetchPartsByModel(modelId!);
@@ -53,32 +52,49 @@ const ModelDetails = () => {
       setModel(modelData);
       setParts(partsData);
       setActiveSlideIndex(0);
-
-      setLoading(false);
     };
 
     loadData();
   }, [modelId]);
 
-  // Не рендерим, если `slides` еще не загружен
-  if (loading || slides.length === 0) {
-    return <div className="text-center py-6">Загрузка...</div>;
-  }
-
-  // Определяем активный слайд (сначала `null`, но потом он появится)
   const activeSlide = slides[activeSlideIndex] || null;
 
-  // Если бэкенд уже возвращает детали внутри `activeSlide`
   const partsToRender = activeSlide?.Parts?.length
     ? activeSlide.Parts
     : parts.filter((part) => part.slide_id === activeSlide?.id);
 
-  console.log("Активный слайд:", activeSlide);
-  console.log("Детали из активного слайда:", partsToRender);
+  const handleMouseEnter = (part: Part) => {
+    setHoveredPart(part);
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredPart(null);
+  };
+
+  const handleMouseMove = (event: React.MouseEvent) => {
+    if (tooltipRef.current && hoveredPart) {
+      const tooltip = tooltipRef.current;
+
+      let x = event.clientX + 10;
+      let y = event.clientY - 40; // Смещаем вверх
+
+      // Чтобы тултип не выходил за границы справа
+      if (x + tooltip.clientWidth > window.innerWidth) {
+        x = window.innerWidth - tooltip.clientWidth - 10;
+      }
+
+      // Чтобы тултип не выходил за границы сверху
+      if (y < 0) {
+        y = event.clientY + 20; // Если упирается в верх экрана, показываем снизу
+      }
+
+      tooltip.style.left = `${x}px`;
+      tooltip.style.top = `${y}px`;
+    }
+  };
 
   return (
     <div className="container mx-auto py-6 flex">
-      {/* Левая часть - Взрыв-схема */}
       <div
         className="relative flex flex-col items-center w-2/3"
         style={{
@@ -95,8 +111,10 @@ const ModelDetails = () => {
           />
         )}
 
-        {/* Слой с интерактивными зонами */}
-        <div className="absolute top-0 left-0 w-full h-full">
+        <div
+          className="absolute top-0 left-0 w-full h-full"
+          onMouseMove={handleMouseMove}
+        >
           {partsToRender.map((part) => (
             <div
               key={part.id}
@@ -106,22 +124,24 @@ const ModelDetails = () => {
                 top: `${part.y_coord}px`,
                 width: `${part.width}px`,
                 height: `${part.height}px`,
+                zIndex: Math.max(
+                  1,
+                  1000 - (part.width || 0) * (part.height || 0)
+                ), // Чем меньше деталь, тем выше z-index
+                minWidth: part.width && part.width < 10 ? "12px" : undefined, // Минимальный размер для удобства
+                minHeight: part.height && part.height < 10 ? "12px" : undefined,
               }}
-              onMouseEnter={() => setHoveredPart(part)}
-              onMouseLeave={() => setHoveredPart(null)}
+              onMouseEnter={() => handleMouseEnter(part)}
+              onMouseLeave={handleMouseLeave}
             />
           ))}
         </div>
 
-        {/* Всплывающая информация о детали */}
         {hoveredPart && (
           <div
-            className="absolute bg-black text-white p-2 rounded text-sm"
-            style={{
-              left: `${hoveredPart.x_coord! + hoveredPart.width! / 2}px`,
-              top: `${hoveredPart.y_coord! - 30}px`,
-              transform: "translateX(-50%)",
-            }}
+            ref={tooltipRef}
+            className="fixed bg-black text-white p-2 rounded text-sm pointer-events-none"
+            style={{ transform: "translate(-50%, -50%)" }}
           >
             <p>
               <strong>Артикул:</strong> {hoveredPart.part_number}
@@ -137,7 +157,6 @@ const ModelDetails = () => {
           </div>
         )}
 
-        {/* Превью слайдов */}
         <div className="flex gap-2 mt-4">
           {slides.map((slide, index) => (
             <img
@@ -155,7 +174,6 @@ const ModelDetails = () => {
         </div>
       </div>
 
-      {/* Правая часть - Заглушка под таблицу */}
       <div className="w-1/3 p-4">
         <h2 className="text-xl font-semibold">
           Таблица деталей (пока заглушка)
