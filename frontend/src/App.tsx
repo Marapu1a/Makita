@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Catalog from "./pages/Catalog";
 import CategoryGrid from "./components/CategoryGrid";
-import ModelDetails from "./pages/ModelDetails";
+// import ModelDetails from "./pages/ModelDetails";
+import SVGPartsLayer from "./pages/SVGPartsLayer";
 import "./index.css";
 
 function App() {
@@ -10,7 +11,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Catalog />} />
         <Route path="/categories/:categoryId" element={<CategoryGrid />} />
-        <Route path="/model/:modelId" element={<ModelDetails />} />
+        {/* <Route path="/model/:modelId" element={<ModelDetails />} /> */}
+        <Route path="/model/:modelId" element={<SVGPartsLayer />} />
       </Routes>
     </Router>
   );

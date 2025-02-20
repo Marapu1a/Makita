@@ -5,6 +5,7 @@ import {
   fetchModelById,
   fetchPartsByModel,
 } from "../utils/api";
+import PartsTable from "../components/PartsTable";
 
 type Slide = {
   id: number;
@@ -175,9 +176,10 @@ const ModelDetails = () => {
       </div>
 
       <div className="w-1/3 p-4">
-        <h2 className="text-xl font-semibold">
-          Таблица деталей (пока заглушка)
-        </h2>
+        <PartsTable
+          parts={parts}
+          onPartHover={(part) => setHoveredPart(part)}
+        />
       </div>
     </div>
   );
