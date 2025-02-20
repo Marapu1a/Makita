@@ -113,9 +113,9 @@ const ModelDetailsWithSVG = () => {
 
         // Применение стилей по умолчанию
         useEl.setAttribute("opacity", "1");
-        useEl.setAttribute("fill", "rgba(0, 255, 0, 0.5)");
+        useEl.setAttribute("fill", "rgba(0, 0, 0, 0.0)");
         useEl.style.opacity = "1";
-        useEl.style.fill = "rgba(0, 255, 0, 0.5)";
+        useEl.style.fill = "rgba(0, 0, 0, 0.0)";
         useEl.style.overflow = "visible";
 
         // Наведение для подсветки и тултипа
@@ -123,6 +123,7 @@ const ModelDetailsWithSVG = () => {
           useEl.setAttribute("fill", "rgba(255, 0, 0, 0.7)");
           useEl.style.fill = "rgba(255, 0, 0, 0.7)";
           setHoveredPart(part);
+          setShowTooltip(true);
           setTooltipPosition({ x: e.clientX + 10, y: e.clientY - 40 });
         });
 
@@ -134,6 +135,7 @@ const ModelDetailsWithSVG = () => {
           useEl.setAttribute("fill", "rgba(0, 255, 0, 0.5)");
           useEl.style.fill = "rgba(0, 255, 0, 0.5)";
           setHoveredPart(null);
+          setShowTooltip(false);
         });
       }
     });
@@ -164,7 +166,7 @@ const ModelDetailsWithSVG = () => {
         )}
 
         {/* ✅ Тултип */}
-        {hoveredPart && (
+        {showTooltip && hoveredPart && (
           <div
             ref={tooltipRef}
             className="fixed bg-black text-white p-2 rounded text-sm pointer-events-none"
@@ -211,6 +213,7 @@ const ModelDetailsWithSVG = () => {
         <PartsTable
           parts={parts}
           hoveredPart={hoveredPart}
+          setShowTooltip={(show) => setShowTooltip(show)}
           onPartHover={(part) => setHoveredPart(part)}
         />
       </div>

@@ -12,6 +12,7 @@ type Part = {
 type PartsTableProps = {
   parts: Part[];
   onPartHover: (part: Part | null) => void;
+  setShowTooltip: (show: boolean) => void;
   hoveredPart: Part | null;
 };
 
@@ -19,6 +20,7 @@ const PartsTable: React.FC<PartsTableProps> = ({
   parts,
   onPartHover,
   hoveredPart,
+  setShowTooltip,
 }) => {
   useEffect(() => {
     if (!hoveredPart) return;
@@ -42,6 +44,7 @@ const PartsTable: React.FC<PartsTableProps> = ({
         // ✅ Сравниваем артикулы и подсвечиваем ВСЕ детали с таким же артикулом
         const isMatchingPart =
           hoveredPart && hoveredPart.number.toString() === partNumber;
+        console.log(hoveredPart.number);
 
         useEl.setAttribute(
           "fill",
@@ -71,7 +74,10 @@ const PartsTable: React.FC<PartsTableProps> = ({
             <tr
               key={part.id}
               className="hover:bg-gray-100 cursor-pointer"
-              onMouseEnter={() => onPartHover(part)}
+              onMouseEnter={() => {
+                onPartHover(part);
+                setShowTooltip(false);
+              }}
               onMouseLeave={() => onPartHover(null)}
             >
               <td className="border px-2 py-1">{index + 1}</td>
