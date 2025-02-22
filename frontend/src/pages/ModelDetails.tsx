@@ -20,12 +20,12 @@ type Part = {
   number: number;
   name: string | null;
   part_number: string;
-  x_coord: number | null;
-  y_coord: number | null;
-  width: number | null;
-  height: number | null;
   price: number;
   slide_id: number | null;
+  x_coord?: number;
+  y_coord?: number;
+  width?: number;
+  height?: number;
 };
 
 type Model = {
@@ -41,6 +41,7 @@ const ModelDetails = () => {
   const [parts, setParts] = useState<Part[]>([]);
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
   const [hoveredPart, setHoveredPart] = useState<Part | null>(null);
+  const [ShowTooltip, setShowTooltip] = useState<boolean>(false);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -60,16 +61,16 @@ const ModelDetails = () => {
 
   const activeSlide = slides[activeSlideIndex] || null;
 
-  const partsToRender = activeSlide?.Parts?.length
-    ? activeSlide.Parts
-    : parts.filter((part) => part.slide_id === activeSlide?.id);
+  const partsToRender = activeSlide?.Parts || [];
 
   const handleMouseEnter = (part: Part) => {
     setHoveredPart(part);
+    setShowTooltip(true);
   };
 
   const handleMouseLeave = () => {
     setHoveredPart(null);
+    setShowTooltip(false);
   };
 
   const handleMouseMove = (event: React.MouseEvent) => {
@@ -119,7 +120,8 @@ const ModelDetails = () => {
           {partsToRender.map((part) => (
             <div
               key={part.id}
-              className="absolute bg-red-500 bg-opacity-30 hover:bg-opacity-60 cursor-pointer"
+              id={`part-${part.id}`} // ✅ ОБЯЗАТЕЛЬНО
+              className="absolute bg-red-500 bg-opacity-0 cursor-pointer"
               style={{
                 left: `${part.x_coord}px`,
                 top: `${part.y_coord}px`,
@@ -138,10 +140,10 @@ const ModelDetails = () => {
           ))}
         </div>
 
-        {hoveredPart && (
+        {ShowTooltip && hoveredPart && (
           <div
             ref={tooltipRef}
-            className="fixed bg-black text-white p-2 rounded text-sm pointer-events-none"
+            className="fixed bg-black text-white p-2 rounded text-sm pointer-events-none z-[9999]"
             style={{ transform: "translate(-50%, -50%)" }}
           >
             <p>
@@ -178,7 +180,10 @@ const ModelDetails = () => {
       <div className="w-1/3 p-4">
         <PartsTable
           parts={parts}
+          hoveredPart={hoveredPart}
+          setShowTooltip={(show) => setShowTooltip(show)}
           onPartHover={(part) => setHoveredPart(part)}
+          isSvg={false}
         />
       </div>
     </div>

@@ -14,6 +14,7 @@ type PartsTableProps = {
   onPartHover: (part: Part | null) => void;
   setShowTooltip: (show: boolean) => void;
   hoveredPart: Part | null;
+  isSvg: boolean;
 };
 
 const PartsTable: React.FC<PartsTableProps> = ({
@@ -21,41 +22,53 @@ const PartsTable: React.FC<PartsTableProps> = ({
   onPartHover,
   hoveredPart,
   setShowTooltip,
+  isSvg,
 }) => {
   useEffect(() => {
     if (!hoveredPart) return;
 
-    const svgContainer = document.querySelector("svg");
-    if (!svgContainer) return;
+    const isMatchingPart = (part: Part) =>
+      hoveredPart.part_number === part.part_number;
 
-    const useElements = svgContainer.querySelectorAll("use");
-    const xlinkNS = "http://www.w3.org/1999/xlink";
+    if (isSvg) {
+      // ✅ SVG логика
+      const svgContainer = document.querySelector("svg");
+      if (!svgContainer) return;
 
-    useElements.forEach((useEl) => {
-      const xlinkHref =
-        useEl.getAttributeNS(xlinkNS, "href") || useEl.getAttribute("href");
+      svgContainer.querySelectorAll("use").forEach((useEl) => {
+        const xlinkHref =
+          useEl.getAttributeNS("http://www.w3.org/1999/xlink", "href") ||
+          useEl.getAttribute("href");
 
-      if (xlinkHref && xlinkHref.startsWith("#ref")) {
+        if (!xlinkHref?.startsWith("#ref")) return;
+
         const match = xlinkHref.match(/#ref(\d+)/);
         if (!match) return;
 
         const partNumber = match[1];
-
-        // ✅ Сравниваем артикулы и подсвечиваем ВСЕ детали с таким же артикулом
-        const isMatchingPart =
-          hoveredPart && hoveredPart.number.toString() === partNumber;
-        console.log(hoveredPart.number);
+        const matched = parts.some(
+          (p) => isMatchingPart(p) && p.number.toString() === partNumber
+        );
 
         useEl.setAttribute(
-          "fill",
-          isMatchingPart ? "rgba(255, 0, 0, 0.7)" : "rgba(0, 255, 0, 0.5)"
+          "style",
+          `overflow: visible; opacity: 1; fill: ${
+            matched ? "rgba(0, 255, 0, 0.7)" : "rgba(0, 0, 0, 0)"
+          };`
         );
-        useEl.style.fill = isMatchingPart
-          ? "rgba(255, 0, 0, 0.7)"
-          : "rgba(0, 255, 0, 0.5)";
-      }
-    });
-  }, [hoveredPart]);
+      });
+    } else {
+      // ✅ Div логика
+      parts.forEach((part) => {
+        const partDiv = document.getElementById(`part-${part.id}`);
+        if (!partDiv) return;
+
+        partDiv.style.backgroundColor = isMatchingPart(part)
+          ? "rgba(0, 255, 0, 0.7)" // ✅ Подсветка
+          : "rgba(255, 0, 0, 0)"; // ❌ Снятие подсветки
+      });
+    }
+  }, [hoveredPart, isSvg, parts]);
 
   return (
     <div className="max-h-[500px] overflow-y-auto border rounded">
@@ -80,7 +93,7 @@ const PartsTable: React.FC<PartsTableProps> = ({
               }}
               onMouseLeave={() => onPartHover(null)}
             >
-              <td className="border px-2 py-1">{index + 1}</td>
+              <td className="border px-2 py-1">{part.number}</td>
               <td className="border px-2 py-1">{part.part_number}</td>
               <td className="border px-2 py-1">{part.name || "—"}</td>
               <td className="border px-2 py-1">{part.price} ₽</td>

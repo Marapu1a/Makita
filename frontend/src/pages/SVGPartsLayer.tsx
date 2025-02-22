@@ -37,11 +37,9 @@ const ModelDetailsWithSVG = () => {
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
   const [hoveredPart, setHoveredPart] = useState<Part | null>(null);
   const [showTooltip, setShowTooltip] = useState<boolean>(false);
-  const [svgContent, setSvgContent] = useState<string | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState<{
-    x: number;
-    y: number;
-  }>({ x: 0, y: 0 });
+  const [svgContent, setSvgContent] = useState<{
+    [slideId: number]: string | null;
+  }>({});
 
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const svgContainerRef = useRef<HTMLDivElement | null>(null);
@@ -74,10 +72,16 @@ const ModelDetailsWithSVG = () => {
         const response = await fetch(svgPath);
         if (!response.ok) throw new Error("SVG not found");
         const svgText = await response.text();
-        setSvgContent(svgText);
+        setSvgContent((prev) => ({
+          ...prev,
+          [slide.id]: svgText,
+        }));
       } catch (error) {
         console.error("Error loading SVG:", error);
-        setSvgContent(null);
+        setSvgContent((prev) => ({
+          ...prev,
+          [slide.id]: null,
+        }));
       }
     };
 
@@ -86,10 +90,11 @@ const ModelDetailsWithSVG = () => {
 
   // Работа с SVG и подсветка деталей
   useEffect(() => {
-    if (!svgContent || !svgContainerRef.current) return;
+    const svgText = svgContent[slides[activeSlideIndex]?.id];
+    if (!svgText || !svgContainerRef.current) return;
 
     const parser = new DOMParser();
-    const svgDoc = parser.parseFromString(svgContent, "image/svg+xml");
+    const svgDoc = parser.parseFromString(svgText, "image/svg+xml");
     const svgElement = svgDoc.querySelector("svg");
 
     if (!svgElement) return;
@@ -99,6 +104,8 @@ const ModelDetailsWithSVG = () => {
 
     const useElements = svgElement.querySelectorAll("use");
     const xlinkNS = "http://www.w3.org/1999/xlink";
+
+    const handlers: Array<[Element, string, EventListener]> = [];
 
     useElements.forEach((useEl) => {
       const xlinkHref = useEl.getAttributeNS(xlinkNS, "href");
@@ -111,35 +118,46 @@ const ModelDetailsWithSVG = () => {
         const part = parts.find((p) => p.number.toString() === partNumber);
         if (!part) return;
 
-        // Применение стилей по умолчанию
-        useEl.setAttribute("opacity", "1");
-        useEl.setAttribute("fill", "rgba(0, 0, 0, 0.0)");
-        useEl.style.opacity = "1";
-        useEl.style.fill = "rgba(0, 0, 0, 0.0)";
-        useEl.style.overflow = "visible";
-
-        // Наведение для подсветки и тултипа
-        useEl.addEventListener("mouseenter", (e: MouseEvent) => {
-          useEl.setAttribute("fill", "rgba(255, 0, 0, 0.7)");
-          useEl.style.fill = "rgba(255, 0, 0, 0.7)";
+        const handleMouseEnter: EventListener = (e) => {
+          const mouseEvent = e as MouseEvent;
           setHoveredPart(part);
           setShowTooltip(true);
-          setTooltipPosition({ x: e.clientX + 10, y: e.clientY - 40 });
-        });
+          if (tooltipRef.current) {
+            tooltipRef.current.style.left = `${mouseEvent.clientX + 10}px`;
+            tooltipRef.current.style.top = `${mouseEvent.clientY - 40}px`;
+          }
+        };
 
-        useEl.addEventListener("mousemove", (e: MouseEvent) => {
-          setTooltipPosition({ x: e.clientX + 10, y: e.clientY - 40 });
-        });
+        const handleMouseMove: EventListener = (e) => {
+          const mouseEvent = e as MouseEvent;
+          if (tooltipRef.current) {
+            tooltipRef.current.style.left = `${mouseEvent.clientX + 10}px`;
+            tooltipRef.current.style.top = `${mouseEvent.clientY - 40}px`;
+          }
+        };
 
-        useEl.addEventListener("mouseleave", () => {
-          useEl.setAttribute("fill", "rgba(0, 255, 0, 0.5)");
-          useEl.style.fill = "rgba(0, 255, 0, 0.5)";
+        const handleMouseLeave: EventListener = () => {
           setHoveredPart(null);
           setShowTooltip(false);
-        });
+        };
+
+        useEl.addEventListener("mouseenter", handleMouseEnter);
+        useEl.addEventListener("mousemove", handleMouseMove);
+        useEl.addEventListener("mouseleave", handleMouseLeave);
+
+        handlers.push([useEl, "mouseenter", handleMouseEnter]);
+        handlers.push([useEl, "mousemove", handleMouseMove]);
+        handlers.push([useEl, "mouseleave", handleMouseLeave]);
       }
     });
-  }, [svgContent, parts]);
+
+    // ✅ Чистим обработчики
+    return () => {
+      handlers.forEach(([el, event, handler]) => {
+        el.removeEventListener(event, handler);
+      });
+    };
+  }, [svgContent, slides, activeSlideIndex, parts]);
 
   return (
     <div className="container mx-auto py-6 flex">
@@ -171,8 +189,8 @@ const ModelDetailsWithSVG = () => {
             ref={tooltipRef}
             className="fixed bg-black text-white p-2 rounded text-sm pointer-events-none"
             style={{
-              top: `${tooltipPosition.y}px`,
-              left: `${tooltipPosition.x}px`,
+              top: -9999,
+              left: -9999,
               transform: "translate(-50%, -50%)",
               zIndex: 9999,
             }}
@@ -215,6 +233,7 @@ const ModelDetailsWithSVG = () => {
           hoveredPart={hoveredPart}
           setShowTooltip={(show) => setShowTooltip(show)}
           onPartHover={(part) => setHoveredPart(part)}
+          isSvg={true}
         />
       </div>
     </div>
