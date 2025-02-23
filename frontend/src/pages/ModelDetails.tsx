@@ -42,22 +42,57 @@ const ModelDetails = () => {
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
   const [hoveredPart, setHoveredPart] = useState<Part | null>(null);
   const [ShowTooltip, setShowTooltip] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSVGMap, setIsSVGMap] = useState<Record<number, boolean>>({});
+
   const tooltipRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
-      const slidesData = await fetchSlidesByModel(modelId!);
-      const modelData = await fetchModelById(modelId!);
-      const partsData = await fetchPartsByModel(modelId!);
+      setIsLoading(true);
+
+      const [slidesData, modelData, partsData] = await Promise.all([
+        fetchSlidesByModel(modelId!),
+        fetchModelById(modelId!),
+        fetchPartsByModel(modelId!),
+      ]);
 
       setSlides(slidesData);
       setModel(modelData);
       setParts(partsData);
+
+      // 🔥 Заполняем isSVGMap для каждого слайда
+      const svgMap: Record<number, boolean> = {};
+
+      slidesData.forEach((slide: Slide) => {
+        console.log("Slide ID:", slide.id); // 🔍 Проверим, что slide.id корректный
+
+        const slideParts = partsData.filter(
+          (p: { slide_id: number }) => p.slide_id === slide.id
+        );
+
+        const hasNoCoords = slideParts.some(
+          (part: { x_coord: null; y_coord: null }) =>
+            part.x_coord == null || part.y_coord == null
+        );
+
+        // Если slide.id не определён, лог покажет ошибку
+        if (slide.id === undefined) {
+          console.error("Ошибка: slide.id undefined для слайда:", slide);
+        }
+
+        svgMap[slide.id] = hasNoCoords; // Здесь ключ должен быть slide.id
+      });
+
+      setIsSVGMap(svgMap);
       setActiveSlideIndex(0);
+      setIsLoading(false);
     };
 
     loadData();
   }, [modelId]);
+
+  console.log(isSVGMap);
 
   const activeSlide = slides[activeSlideIndex] || null;
 

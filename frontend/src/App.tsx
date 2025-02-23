@@ -13,8 +13,8 @@ function App() {
         <Route path="/" element={<Catalog />} />
         <Route path="/categories/:categoryId" element={<CategoryGrid />} />
         {/* <Route path="/model/:modelId" element={<ModelDetails />} /> */}
-        <Route path="/model/:modelId" element={<SVGPartsLayer />} />
-        {/* <Route path="/model/:modelId" element={<UnifiedModelDetails />} /> */}
+        {/* <Route path="/model/:modelId" element={<SVGPartsLayer />} /> */}
+        <Route path="/model/:modelId" element={<UnifiedModelDetails />} />
       </Routes>
     </Router>
   );

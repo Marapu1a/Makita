@@ -8,7 +8,7 @@ router.get("/model/:modelId", async (req, res) => {
         const { modelId } = req.params;
         const slides = await Slide.findAll({
             where: { model_id: modelId },
-            attributes: ["slide_number", "image_path", "image_width", "image_height"],
+            attributes: ["id", "slide_number", "image_path", "image_width", "image_height"],
             order: [["slide_number", "ASC"]],
             include: [
                 {
