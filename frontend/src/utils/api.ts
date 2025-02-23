@@ -8,14 +8,16 @@ const sanitizeFileName = (name: string) =>
     name.replace(/\s+/g, "_").replace(/[\/\\]/g, "_");
 
 // Получение всех категорий с добавлением путей к изображениям
-export const fetchCategories = async () => {
+export const fetchCategories = async (parentId: string | null = null) => {
     try {
-        const response = await axios.get(`${API_URL}/categories`);
+        const response = await axios.get(`${API_URL}/categories`, {
+            params: { parent_id: parentId },
+        });
+
         if (response.data.success) {
-            return response.data.data.map((category: { name: string; children?: any[] }) => ({
+            return response.data.data.map((category: { name: string }) => ({
                 ...category,
                 img: `${IMAGE_BASE_URL}${sanitizeFileName(category.name)}.jpg`,
-                children: category.children || [],
             }));
         } else {
             console.error("Ошибка загрузки категорий:", response.data.error);

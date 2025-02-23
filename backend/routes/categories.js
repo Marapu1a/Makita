@@ -5,26 +5,18 @@ const router = express.Router();
 // Получить дерево категорий
 router.get("/", async (req, res) => {
     try {
-        const categories = await Categories.findAll({ raw: true });
+        const parentId = req.query.parent_id || null;
 
-        // Создаём мапу для удобства формирования дерева
-        const categoryMap = new Map();
-        const topCategories = [];
+        const whereClause = parentId
+            ? { parent_id: parentId }
+            : { parent_id: null };
 
-        categories.forEach((category) => {
-            category.children = [];
-            categoryMap.set(category.id, category);
+        const categories = await Categories.findAll({
+            where: whereClause,
+            raw: true,
         });
 
-        categories.forEach((category) => {
-            if (category.parent_id && categoryMap.has(category.parent_id)) {
-                categoryMap.get(category.parent_id).children.push(category);
-            } else {
-                topCategories.push(category);
-            }
-        });
-
-        res.json({ success: true, data: topCategories });
+        res.json({ success: true, data: categories });
     } catch (error) {
         console.error("Ошибка при получении категорий:", error);
         res.status(500).json({ success: false, error: "Ошибка при получении категорий" });

@@ -36,21 +36,26 @@ export default function CategoryGrid() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadCategories = async () => {
+    const loadData = async () => {
       setLoading(true);
-      if (categoryId) {
-        // Если есть categoryId, загружаем модели
-        const data = await fetchModelsByCategory(categoryId);
-        setModels(data);
+
+      // Загружаем вложенные категории
+      const subCategories = await fetchCategories(categoryId || null);
+
+      if (subCategories.length > 0) {
+        setCategories(subCategories);
+        setModels(null); // Есть вложенные категории — не грузим модели
       } else {
-        // Если categoryId нет, загружаем категории
-        const data = await fetchCategories();
-        setCategories(addImagesToCategories(data));
+        // Если вложенных нет — загружаем модели
+        const modelsData = await fetchModelsByCategory(categoryId || "");
+        setModels(modelsData);
+        setCategories([]);
       }
+
       setLoading(false);
     };
 
-    loadCategories();
+    loadData();
   }, [categoryId]);
 
   if (loading) return <div>Загрузка...</div>;
