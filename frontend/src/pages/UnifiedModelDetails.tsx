@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import {
   fetchSlidesByModel,
@@ -40,13 +40,13 @@ const UnifiedModelDetails = () => {
   const [model, setModel] = useState<Model | null>(null);
   const [parts, setParts] = useState<Part[]>([]);
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
-  const [hoveredPart, setHoveredPart] = useState<Part | null>(null);
-  const [showTooltip, setShowTooltip] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSVGMap, setIsSVGMap] = useState<Record<number, boolean>>({});
   const [svgContent, setSvgContent] = useState<{
     [slideId: number]: string | null;
   }>({});
+  const [hoveredPart, setHoveredPart] = useState<Part | null>(null);
+  const [showTooltip, setShowTooltip] = useState<boolean>(false);
 
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const svgContainerRef = useRef<HTMLDivElement | null>(null);
@@ -65,27 +65,15 @@ const UnifiedModelDetails = () => {
       setModel(modelData);
       setParts(partsData);
 
-      // 🔥 Заполняем isSVGMap для каждого слайда
       const svgMap: Record<number, boolean> = {};
-
       slidesData.forEach((slide: Slide) => {
-        console.log("Slide ID:", slide.id); // 🔍 Проверим, что slide.id корректный
-
         const slideParts = partsData.filter(
-          (p: { slide_id: number }) => p.slide_id === slide.id
+          (p: Part) => p.slide_id === slide.id
         );
-
         const hasNoCoords = slideParts.some(
-          (part: { x_coord: null; y_coord: null }) =>
-            part.x_coord == null || part.y_coord == null
+          (part: Part) => part.x_coord === null || part.y_coord === null
         );
-
-        // Если slide.id не определён, лог покажет ошибку
-        if (slide.id === undefined) {
-          console.error("Ошибка: slide.id undefined для слайда:", slide);
-        }
-
-        svgMap[slide.id] = hasNoCoords; // Здесь ключ должен быть slide.id
+        svgMap[slide.id] = hasNoCoords;
       });
 
       setIsSVGMap(svgMap);
@@ -96,13 +84,14 @@ const UnifiedModelDetails = () => {
     loadData();
   }, [modelId]);
 
-  const activeSlide = slides[activeSlideIndex] || null;
-  const isSVG = isSVGMap[activeSlide?.id] ?? false;
-
-  // Для деталей — фильтруем из всех загруженных
-  const partsToRender = parts.filter(
-    (part) => part.slide_id === activeSlide?.id
+  const activeSlide = useMemo(
+    () => slides[activeSlideIndex] || null,
+    [slides, activeSlideIndex]
   );
+  const filteredParts = useMemo(() => {
+    return parts.filter((part) => part.slide_id === activeSlide?.id);
+  }, [parts, activeSlide]);
+  const isSVG = isSVGMap[activeSlide?.id] ?? false;
 
   const handleMouseEnter = (part: Part) => {
     setHoveredPart(part);
@@ -114,58 +103,60 @@ const UnifiedModelDetails = () => {
     setShowTooltip(false);
   };
 
-  const handleMouseMove = (event: React.MouseEvent) => {
-    if (tooltipRef.current && hoveredPart) {
-      const tooltip = tooltipRef.current;
+  const handleMouseMove = (() => {
+    let animationFrameId: number;
 
-      let x = event.clientX + 10;
-      let y = event.clientY - 40; // Смещаем вверх
+    return (event: MouseEvent | React.MouseEvent) => {
+      if (!tooltipRef.current || !hoveredPart) return;
 
-      // Чтобы тултип не выходил за границы справа
-      if (x + tooltip.clientWidth > window.innerWidth) {
-        x = window.innerWidth - tooltip.clientWidth - 10;
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
       }
 
-      // Чтобы тултип не выходил за границы сверху
-      if (y < 0) {
-        y = event.clientY + 20; // Если упирается в верх экрана, показываем снизу
-      }
+      animationFrameId = requestAnimationFrame(() => {
+        // ✅ Проверка здесь
+        if (!tooltipRef.current) return;
 
-      tooltip.style.left = `${x}px`;
-      tooltip.style.top = `${y}px`;
-    }
-  };
+        let x = event.clientX + 10;
+        let y = event.clientY - 40;
 
-  // SVG логика
-  // Загрузка SVG для активного слайда
+        const tooltipWidth = tooltipRef.current?.clientWidth || 0;
+
+        if (x + tooltipWidth > window.innerWidth) {
+          x = window.innerWidth - tooltipWidth - 10;
+        }
+
+        if (y < 0) {
+          y = event.clientY + 20;
+        }
+
+        tooltipRef.current.style.left = `${x}px`;
+        tooltipRef.current.style.top = `${y}px`;
+      });
+    };
+  })();
+
   useEffect(() => {
     const loadSVG = async () => {
-      if (!model || !slides.length) return;
-
       const slide = slides[activeSlideIndex];
-      const svgPath = `/images/${model.category_name}/${model.name}/${model.name}_${slide.slide_number}.svg`;
+      if (!slide || svgContent[slide.id]) return; // ✅ Проверка внутри эффекта
+
+      const svgPath = `/images/${model?.category_name}/${model?.name}/${model?.name}_${slide.slide_number}.svg`;
 
       try {
         const response = await fetch(svgPath);
         if (!response.ok) throw new Error("SVG not found");
         const svgText = await response.text();
-        setSvgContent((prev) => ({
-          ...prev,
-          [slide.id]: svgText,
-        }));
+        setSvgContent((prev) => ({ ...prev, [slide.id]: svgText }));
       } catch (error) {
         console.error("Error loading SVG:", error);
-        setSvgContent((prev) => ({
-          ...prev,
-          [slide.id]: null,
-        }));
+        setSvgContent((prev) => ({ ...prev, [slide.id]: null }));
       }
     };
 
     loadSVG();
-  }, [model, slides, activeSlideIndex]);
+  }, [activeSlideIndex, model, slides]); // ✅ svgContent убрали из зависимостей
 
-  // Работа с SVG и подсветка деталей
   useEffect(() => {
     const svgText = svgContent[slides[activeSlideIndex]?.id];
     if (!svgText || !svgContainerRef.current) return;
@@ -180,11 +171,8 @@ const UnifiedModelDetails = () => {
     svgContainerRef.current.appendChild(svgElement);
 
     const useElements = svgElement.querySelectorAll("use");
-    const xlinkNS = "http://www.w3.org/1999/xlink";
-
-    const handlers: Array<[Element, string, EventListener]> = [];
-
     useElements.forEach((useEl) => {
+      const xlinkNS = "http://www.w3.org/1999/xlink";
       const xlinkHref = useEl.getAttributeNS(xlinkNS, "href");
 
       if (xlinkHref && xlinkHref.startsWith("#ref")) {
@@ -195,83 +183,50 @@ const UnifiedModelDetails = () => {
         const part = parts.find((p) => p.number.toString() === partNumber);
         if (!part) return;
 
-        const handleMouseEnter: EventListener = (e) => {
-          const mouseEvent = e as MouseEvent;
-          setHoveredPart(part);
-          setShowTooltip(true);
-          if (tooltipRef.current) {
-            tooltipRef.current.style.left = `${mouseEvent.clientX + 10}px`;
-            tooltipRef.current.style.top = `${mouseEvent.clientY - 40}px`;
-          }
-        };
+        useEl.setAttribute("pointer-events", "all");
 
-        const handleMouseMove: EventListener = (e) => {
-          const mouseEvent = e as MouseEvent;
-          if (tooltipRef.current) {
-            tooltipRef.current.style.left = `${mouseEvent.clientX + 10}px`;
-            tooltipRef.current.style.top = `${mouseEvent.clientY - 40}px`;
-          }
-        };
-
-        const handleMouseLeave: EventListener = () => {
-          setHoveredPart(null);
-          setShowTooltip(false);
-        };
-
-        useEl.addEventListener("mouseenter", handleMouseEnter);
-        useEl.addEventListener("mousemove", handleMouseMove);
+        useEl.addEventListener("mouseenter", () => handleMouseEnter(part));
         useEl.addEventListener("mouseleave", handleMouseLeave);
-
-        handlers.push([useEl, "mouseenter", handleMouseEnter]);
-        handlers.push([useEl, "mousemove", handleMouseMove]);
-        handlers.push([useEl, "mouseleave", handleMouseLeave]);
       }
     });
-
-    // ✅ Чистим обработчики
-    return () => {
-      handlers.forEach(([el, event, handler]) => {
-        el.removeEventListener(event, handler);
-      });
-    };
   }, [svgContent, slides, activeSlideIndex, parts]);
 
-  if (isLoading) {
-    return <div>Загрузка...</div>;
-  }
+  if (isLoading) return <div>Загрузка...</div>;
 
   return (
-    <div className="container mx-auto py-6 flex">
+    <div
+      className="container mx-auto py-6 flex"
+      onMouseMove={handleMouseMove} // ✅ Глобальный слушатель для движения мыши
+    >
       <div
         className="relative flex flex-col items-center w-2/3"
         style={{
-          width: slides[activeSlideIndex]?.image_width || "auto",
-          height: slides[activeSlideIndex]?.image_height || "auto",
+          width: activeSlide?.image_width || "auto",
+          height: activeSlide?.image_height || "auto",
         }}
       >
-        {slides.length > 0 && (
+        {activeSlide && (
           <img
-            key={slides[activeSlideIndex].slide_number}
-            src={`/images/${model?.category_name}/${model?.name}/${model?.name}_${slides[activeSlideIndex].slide_number}.webp`}
+            key={activeSlide.slide_number}
+            src={`/images/${model?.category_name}/${model?.name}/${model?.name}_${activeSlide.slide_number}.webp`}
             alt="Взрыв-схема"
             className="w-full h-full object-contain mb-4"
           />
         )}
+
         {isSVG && (
           <div
             ref={svgContainerRef}
             className="absolute top-0 left-0 w-full h-full pointer-events-auto"
           />
         )}
+
         {!isSVG && (
-          <div
-            className="absolute top-0 left-0 w-full h-full"
-            onMouseMove={handleMouseMove}
-          >
-            {partsToRender.map((part) => (
+          <div className="absolute top-0 left-0 w-full h-full">
+            {filteredParts.map((part) => (
               <div
                 key={part.id}
-                id={`part-${part.id}`} // ✅ ОБЯЗАТЕЛЬНО
+                id={`part-${part.id}`}
                 className="absolute bg-red-500 bg-opacity-0 cursor-pointer"
                 style={{
                   left: `${part.x_coord}px`,
@@ -281,8 +236,8 @@ const UnifiedModelDetails = () => {
                   zIndex: Math.max(
                     1,
                     1000 - (part.width || 0) * (part.height || 0)
-                  ), // Чем меньше деталь, тем выше z-index
-                  minWidth: part.width && part.width < 10 ? "12px" : undefined, // Минимальный размер для удобства
+                  ),
+                  minWidth: part.width && part.width < 10 ? "12px" : undefined,
                   minHeight:
                     part.height && part.height < 10 ? "12px" : undefined,
                 }}
@@ -297,7 +252,6 @@ const UnifiedModelDetails = () => {
           <div
             ref={tooltipRef}
             className="fixed bg-black text-white p-2 rounded text-sm pointer-events-none z-[9999]"
-            style={{ transform: "translate(-50%, -50%)" }}
           >
             <p>
               <strong>Артикул:</strong> {hoveredPart.part_number}
@@ -334,9 +288,9 @@ const UnifiedModelDetails = () => {
         <PartsTable
           parts={parts}
           hoveredPart={hoveredPart}
-          setShowTooltip={(show) => setShowTooltip(show)}
-          onPartHover={(part) => setHoveredPart(part)}
-          isSvg={isSVG ? true : false}
+          setShowTooltip={setShowTooltip}
+          onPartHover={setHoveredPart}
+          isSvg={isSVG}
         />
       </div>
     </div>
