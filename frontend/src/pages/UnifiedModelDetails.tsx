@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
 import {
   fetchSlidesByModel,
@@ -36,6 +37,8 @@ type Model = {
 
 const UnifiedModelDetails = () => {
   const { modelId } = useParams();
+  const navigate = useNavigate();
+
   const [slides, setSlides] = useState<Slide[]>([]);
   const [model, setModel] = useState<Model | null>(null);
   const [parts, setParts] = useState<Part[]>([]);
@@ -191,6 +194,10 @@ const UnifiedModelDetails = () => {
     });
   }, [svgContent, slides, activeSlideIndex, parts]);
 
+  const handleBack = () => {
+    navigate(-1);
+  };
+
   if (isLoading) return <div>Загрузка...</div>;
 
   return (
@@ -198,6 +205,13 @@ const UnifiedModelDetails = () => {
       className="container mx-auto py-6 flex"
       onMouseMove={handleMouseMove} // ✅ Глобальный слушатель для движения мыши
     >
+      <button
+        onClick={handleBack}
+        className="fixed top-4 left-4 text-blue-600 hover:underline z-10"
+      >
+        ⬅ Назад
+      </button>
+
       <div
         className="relative flex flex-col items-center w-2/3"
         style={{

@@ -83,7 +83,7 @@ const PartsTable: React.FC<PartsTableProps> = ({
           </tr>
         </thead>
         <tbody>
-          {parts.map((part, index) => (
+          {parts.map((part) => (
             <tr
               key={part.id}
               className="hover:bg-gray-100 cursor-pointer"
