@@ -30,7 +30,6 @@ const addImagesToCategories = (categories: Category[]): Category[] => {
 
 export default function CategoryGrid() {
   const { categoryId } = useParams(); // Получаем categoryId из URL
-  const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
   const [models, setModels] = useState<Model[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,21 +59,8 @@ export default function CategoryGrid() {
 
   if (loading) return <div>Загрузка...</div>;
 
-  const handleBack = () => {
-    navigate(-1); // Возврат на предыдущую страницу
-  };
-
   return (
     <div className="flex flex-col items-center">
-      {categoryId && (
-        <button
-          onClick={handleBack}
-          className="mb-4 text-blue-600 hover:underline"
-        >
-          ⬅ Назад
-        </button>
-      )}
-
       {models ? (
         <div className="grid grid-cols-4 gap-6">
           {models.map((model) => (

@@ -1,10 +1,13 @@
-// components/Header.tsx
 import { Link } from "react-router-dom";
 import { ShoppingCart, Mail, Phone, User } from "lucide-react";
+import { useCart } from "./CartContext";
 
 const Header = () => {
+  const { cart } = useCart();
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
-    <header className="w-full border-b shadow-sm">
+    <header className="w-full border-b shadow-sm z-10">
       {/* Верхняя панель */}
       <div className="flex justify-between items-center px-4 py-1 text-sm bg-gray-100">
         <div className="flex items-center space-x-4">
@@ -56,7 +59,7 @@ const Header = () => {
           className="flex items-center space-x-1 hover:text-red-600"
         >
           <ShoppingCart size={24} />
-          <span>В корзине 0 т.</span>
+          <span>В корзине {totalItems} т.</span>
         </Link>
       </div>
     </header>

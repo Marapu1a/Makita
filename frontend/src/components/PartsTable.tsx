@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
+import { useCart } from "./CartContext";
 
 type Part = {
   id: number;
@@ -7,6 +8,7 @@ type Part = {
   part_number: string;
   price: number;
   slide_id: number | null;
+  availability: boolean;
 };
 
 type PartsTableProps = {
@@ -15,6 +17,7 @@ type PartsTableProps = {
   setShowTooltip: (show: boolean) => void;
   hoveredPart: Part | null;
   isSvg: boolean;
+  svgRef: React.RefObject<HTMLDivElement>;
 };
 
 const PartsTable: React.FC<PartsTableProps> = ({
@@ -23,6 +26,7 @@ const PartsTable: React.FC<PartsTableProps> = ({
   hoveredPart,
   setShowTooltip,
   isSvg,
+  svgRef,
 }) => {
   useEffect(() => {
     if (!hoveredPart) return;
@@ -30,9 +34,9 @@ const PartsTable: React.FC<PartsTableProps> = ({
     const isMatchingPart = (part: Part) =>
       hoveredPart.part_number === part.part_number;
 
-    if (isSvg) {
+    if (isSvg && svgRef?.current) {
       // ✅ SVG логика
-      const svgContainer = document.querySelector("svg");
+      const svgContainer = svgRef.current.querySelector("svg");
       if (!svgContainer) return;
 
       svgContainer.querySelectorAll("use").forEach((useEl) => {
@@ -71,7 +75,7 @@ const PartsTable: React.FC<PartsTableProps> = ({
   }, [hoveredPart, isSvg, parts]);
 
   return (
-    <div className="max-h-[500px] overflow-y-auto border rounded">
+    <div className="max-h-[600px] overflow-y-auto border rounded">
       <h2 className="text-xl font-semibold mb-2">Таблица деталей</h2>
       <table className="min-w-full text-sm text-left border-collapse">
         <thead>
@@ -79,24 +83,28 @@ const PartsTable: React.FC<PartsTableProps> = ({
             <th className="border px-2 py-1">#</th>
             <th className="border px-2 py-1">Артикул</th>
             <th className="border px-2 py-1">Название</th>
-            <th className="border px-2 py-1">Цена</th>
+            <th className="border px-2 py-1 text-center">Цена</th>
+            <th className="border px-2 py-1 text-center">Есть</th>
           </tr>
         </thead>
         <tbody>
-          {parts.map((part) => (
+          {parts.map((part, index) => (
             <tr
               key={part.id}
-              className="hover:bg-gray-100 cursor-pointer"
+              className="hover:bg-gray-100 cursor-pointer odd:bg-gray-50"
               onMouseEnter={() => {
                 onPartHover(part);
                 setShowTooltip(false);
               }}
               onMouseLeave={() => onPartHover(null)}
             >
-              <td className="border px-2 py-1">{part.number}</td>
+              <td className="border px-2 py-1 text-center">{part.number}</td>
               <td className="border px-2 py-1">{part.part_number}</td>
               <td className="border px-2 py-1">{part.name || "—"}</td>
-              <td className="border px-2 py-1">{part.price} ₽</td>
+              <td className="border px-2 py-1 text-center">{part.price} ₽</td>
+              <td className="border px-2 py-1 text-center">
+                {part.availability ? "Да" : "Нет"}
+              </td>
             </tr>
           ))}
         </tbody>
