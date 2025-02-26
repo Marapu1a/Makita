@@ -267,6 +267,9 @@ const UnifiedModelDetails = () => {
               className="fixed bg-black text-white p-2 rounded text-sm pointer-events-none z-[9999]"
             >
               <p>
+                <strong>Номер на схеме:</strong> {hoveredPart.id}
+              </p>
+              <p>
                 <strong>Артикул:</strong> {hoveredPart.part_number}
               </p>
               {hoveredPart.name && (
@@ -298,7 +301,7 @@ const UnifiedModelDetails = () => {
       </div>
 
       {/* Таблица деталей */}
-      <div className="w-1/3 pl-4">
+      <div className="w-[40%] pl-4">
         <PartsTable
           parts={parts}
           hoveredPart={hoveredPart}

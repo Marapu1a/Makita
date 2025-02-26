@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
 import { ShoppingCart, Mail, Phone, User } from "lucide-react";
-import { useCart } from "./CartContext";
+import { useCart } from "../utils/useCart";
 
 const Header = () => {
-  const { cart } = useCart();
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const { cartItems } = useCart();
+  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <header className="w-full border-b shadow-sm z-10">

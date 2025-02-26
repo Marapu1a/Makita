@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Outlet } from "react-router-dom";
 import Button from "../components/Button";
-import { fetchCategories } from "../utils/api";
 import BackButton from "../components/BackButton";
+import { fetchCategories } from "../utils/api";
+import SearchBar from "../components/SearchBar";
 
 interface Category {
   id: string;
@@ -33,12 +34,7 @@ export default function CatalogSite() {
 
       {/* Search Bar */}
       <div className="p-4 bg-gray-100 flex items-center">
-        <input
-          type="text"
-          placeholder="Поиск по категориям..."
-          className="border p-2 w-1/2"
-        />
-        <Button className="ml-2">Найти</Button>
+        {isCatalogVisible && <SearchBar />}
         <Button className="ml-2" onClick={toggleCatalog}>
           {isCatalogVisible ? "Скрыть каталог" : "Каталог"}
         </Button>
@@ -57,7 +53,7 @@ export default function CatalogSite() {
                   className="mb-1 cursor-pointer hover:underline flex items-center"
                   onClick={() => navigate(`/categories/${category.id}`)}
                 >
-                  ◼ {category.name}
+                  - {category.name}
                 </li>
               ))}
             </ul>

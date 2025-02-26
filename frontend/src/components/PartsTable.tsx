@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useCart } from "./CartContext";
+import { useEffect, useState } from "react";
+import CartModal from "./CartModal";
 
 type Part = {
   id: number;
@@ -28,6 +28,7 @@ const PartsTable: React.FC<PartsTableProps> = ({
   isSvg,
   svgRef,
 }) => {
+  const [selectedPart, setSelectedPart] = useState<Part | null>(null);
   useEffect(() => {
     if (!hoveredPart) return;
 
@@ -75,41 +76,60 @@ const PartsTable: React.FC<PartsTableProps> = ({
   }, [hoveredPart, isSvg, parts]);
 
   return (
-    <div className="max-h-[600px] overflow-y-auto border rounded">
-      <h2 className="text-xl font-semibold mb-2">Таблица деталей</h2>
-      <table className="min-w-full text-sm text-left border-collapse">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border px-2 py-1">#</th>
-            <th className="border px-2 py-1">Артикул</th>
-            <th className="border px-2 py-1">Название</th>
-            <th className="border px-2 py-1 text-center">Цена</th>
-            <th className="border px-2 py-1 text-center">Есть</th>
-          </tr>
-        </thead>
-        <tbody>
-          {parts.map((part, index) => (
-            <tr
-              key={part.id}
-              className="hover:bg-gray-100 cursor-pointer odd:bg-gray-50"
-              onMouseEnter={() => {
-                onPartHover(part);
-                setShowTooltip(false);
-              }}
-              onMouseLeave={() => onPartHover(null)}
-            >
-              <td className="border px-2 py-1 text-center">{part.number}</td>
-              <td className="border px-2 py-1">{part.part_number}</td>
-              <td className="border px-2 py-1">{part.name || "—"}</td>
-              <td className="border px-2 py-1 text-center">{part.price} ₽</td>
-              <td className="border px-2 py-1 text-center">
-                {part.availability ? "Да" : "Нет"}
-              </td>
+    <>
+      {selectedPart && (
+        <CartModal
+          part={{
+            ...selectedPart,
+            name: selectedPart?.name ?? "Без названия",
+          }}
+          onClose={() => setSelectedPart(null)}
+        />
+      )}
+      <div className="max-h-[600px] overflow-y-auto border rounded">
+        <h2 className="text-xl font-semibold mb-2">Таблица деталей</h2>
+        <table className="min-w-full text-sm text-left border-collapse">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border px-2 py-1">#</th>
+              <th className="border px-2 py-1">Артикул</th>
+              <th className="border px-2 py-1">Название</th>
+              <th className="border px-2 py-1 text-center">Цена</th>
+              <th className="border px-2 py-1 text-center">Есть</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {parts.map((part, index) => (
+              <tr
+                key={part.id}
+                className="hover:bg-gray-100 cursor-pointer odd:bg-gray-50"
+                onMouseEnter={() => {
+                  onPartHover(part);
+                  setShowTooltip(false);
+                }}
+                onMouseLeave={() => onPartHover(null)}
+              >
+                <td className="border px-2 py-1 text-center">{part.number}</td>
+                <td className="border px-2 py-1">{part.part_number}</td>
+                <td className="border px-2 py-1">{part.name || "—"}</td>
+                <td className="border px-2 py-1 text-center">{part.price} ₽</td>
+                <td className="border px-2 py-1 text-center">
+                  {part.availability ? "Да" : "Нет"}
+                </td>
+                <td className="border px-2 py-1 text-center">
+                  <button
+                    className="bg-red-600 text-white px-2 py-1 rounded"
+                    onClick={() => setSelectedPart(part)}
+                  >
+                    Добавить
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 };
 
