@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = import.meta.env.VITE_API_URL;
 const IMAGE_BASE_URL = "/images/categories/";
 
 // Функция для приведения названий файлов в порядок
@@ -17,7 +17,7 @@ export const fetchCategories = async (parentId: string | null = null) => {
         if (response.data.success) {
             return response.data.data.map((category: { name: string }) => ({
                 ...category,
-                img: `${IMAGE_BASE_URL}${sanitizeFileName(category.name)}.jpg`,
+                img: `${IMAGE_BASE_URL}${sanitizeFileName(category.name)}.webp`,
             }));
         } else {
             console.error("Ошибка загрузки категорий:", response.data.error);

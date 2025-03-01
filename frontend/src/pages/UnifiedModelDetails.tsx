@@ -267,7 +267,7 @@ const UnifiedModelDetails = () => {
               className="fixed bg-black text-white p-2 rounded text-sm pointer-events-none z-[9999]"
             >
               <p>
-                <strong>Номер на схеме:</strong> {hoveredPart.id}
+                <strong>Номер на схеме:</strong> {hoveredPart.number}
               </p>
               <p>
                 <strong>Артикул:</strong> {hoveredPart.part_number}

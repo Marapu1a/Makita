@@ -3,10 +3,10 @@ import Header from "./components/Header";
 import CategoryGrid from "./components/CategoryGrid";
 import CatalogSite from "./pages/CatalogSite";
 import Catalog from "./pages/Catalog";
+import CartPage from "./pages/CartPage";
 import UnifiedModelDetails from "./pages/UnifiedModelDetails";
 
 import "./index.css";
-import CartPage from "./pages/CartPage";
 
 export default function App() {
   return (

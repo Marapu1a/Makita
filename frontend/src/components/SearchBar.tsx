@@ -13,61 +13,48 @@ export default function SearchBar() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [suggestions, setSuggestions] = useState<Category[]>([]);
   const navigate = useNavigate();
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const loadCategories = async () => {
-      const data = await fetchCategories();
-      setCategories(data);
-    };
-    loadCategories();
+    fetchCategories().then(setCategories).catch(console.error);
   }, []);
 
   useEffect(() => {
-    if (searchTerm.trim()) {
-      const filtered = categories.filter((category) =>
-        category.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setSuggestions(filtered.slice(0, 5));
-    } else {
-      setSuggestions([]);
-    }
+    setSuggestions(
+      searchTerm.trim()
+        ? categories
+            .filter((category) =>
+              category.name.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            .slice(0, 5)
+        : []
+    );
   }, [searchTerm, categories]);
 
   const handleSearch = () => {
     const matchedCategory = categories.find(
       (category) => category.name.toLowerCase() === searchTerm.toLowerCase()
     );
-    if (matchedCategory) {
-      navigate(`/categories/${matchedCategory.id}`);
-    }
+    if (matchedCategory) navigate(`/categories/${matchedCategory.id}`);
     setSuggestions([]);
   };
 
-  const handleClickOutside = (event: MouseEvent) => {
-    if (
-      dropdownRef.current &&
-      !dropdownRef.current.contains(event.target as Node)
-    ) {
-      setSuggestions([]);
-    }
+  const handleSelectCategory = (category: Category) => {
+    setSearchTerm(category.name);
+    setSuggestions([]);
+    navigate(`/categories/${category.id}`);
   };
 
-  useEffect(() => {
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
   return (
-    <div className="relative bg-gray-100 flex items-center" ref={dropdownRef}>
+    <div className="relative p-4 bg-gray-100 flex items-center">
       <div className="relative w-2/3">
         <input
+          ref={inputRef}
           type="text"
           placeholder="Поиск по категориям..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          onBlur={() => setTimeout(() => setSuggestions([]), 200)}
           className="border p-2 w-full"
         />
         {suggestions.length > 0 && (
@@ -77,10 +64,7 @@ export default function SearchBar() {
                 key={category.id}
                 className="p-2 hover:bg-gray-200 cursor-pointer"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setSearchTerm(category.name);
-                  setSuggestions([]);
-                }}
+                onClick={() => handleSelectCategory(category)}
               >
                 {category.name}
               </li>

@@ -2,26 +2,28 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('./db');
 
 const Categories = sequelize.define('Categories', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     name: { type: DataTypes.STRING, allowNull: false, unique: true },
     parent_id: { type: DataTypes.INTEGER, allowNull: true },
 }, {
     tableName: 'categories',
+    timestamps: true,
     createdAt: 'createdat',
     updatedAt: 'updatedat',
 });
 
-// Модель Model
 const Model = sequelize.define('Model', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     name: { type: DataTypes.STRING, unique: true, allowNull: false },
     image_path: { type: DataTypes.STRING, allowNull: false },
     category_id: { type: DataTypes.INTEGER, allowNull: false },
 }, {
     tableName: 'models',
+    timestamps: true,
     createdAt: 'createdat',
     updatedAt: 'updatedat',
 });
 
-// Модель Part
 const Part = sequelize.define('Part', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     model_id: { type: DataTypes.INTEGER, allowNull: false },
@@ -29,15 +31,16 @@ const Part = sequelize.define('Part', {
     number: { type: DataTypes.INTEGER, allowNull: false },
     name: { type: DataTypes.STRING, allowNull: true },
     part_number: { type: DataTypes.STRING, allowNull: false },
-    x_coord: { type: DataTypes.FLOAT },
-    y_coord: { type: DataTypes.FLOAT },
-    price: { type: DataTypes.FLOAT, defaultValue: 0 },
+    x_coord: { type: DataTypes.DOUBLE },
+    y_coord: { type: DataTypes.DOUBLE },
+    price: { type: DataTypes.DOUBLE, defaultValue: 0 },
     availability: { type: DataTypes.BOOLEAN, defaultValue: true },
     quantity: { type: DataTypes.INTEGER, defaultValue: 0 },
-    width: { type: DataTypes.FLOAT, allowNull: true },
-    height: { type: DataTypes.FLOAT, allowNull: true },
+    width: { type: DataTypes.DOUBLE, allowNull: true },
+    height: { type: DataTypes.DOUBLE, allowNull: true },
 }, {
     tableName: 'parts',
+    timestamps: true,
     createdAt: 'createdat',
     updatedAt: 'updatedat',
     indexes: [
@@ -48,16 +51,16 @@ const Part = sequelize.define('Part', {
     ],
 });
 
-// Модель Slide
 const Slide = sequelize.define('Slide', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     model_id: { type: DataTypes.INTEGER, allowNull: false },
     slide_number: { type: DataTypes.INTEGER, allowNull: false },
     image_path: { type: DataTypes.STRING, allowNull: false },
-    image_width: { type: DataTypes.FLOAT },
-    image_height: { type: DataTypes.FLOAT },
+    image_width: { type: DataTypes.DOUBLE },
+    image_height: { type: DataTypes.DOUBLE },
 }, {
     tableName: 'slides',
+    timestamps: true,
     createdAt: 'createdat',
     updatedAt: 'updatedat',
     indexes: [
@@ -68,7 +71,6 @@ const Slide = sequelize.define('Slide', {
     ]
 });
 
-// Связи между таблицами
 Categories.hasMany(Model, { foreignKey: 'category_id' });
 Model.belongsTo(Categories, { foreignKey: 'category_id' });
 
@@ -84,7 +86,7 @@ Slide.belongsTo(Model, { foreignKey: 'model_id' });
 Slide.hasMany(Part, { foreignKey: 'slide_id' });
 Part.belongsTo(Slide, { foreignKey: 'slide_id' });
 
-const reset = process.argv.includes('--reset'); // Запуск с аргументом --reset удалит всё
+const reset = process.argv.includes('--reset');
 sequelize.sync({ force: reset, alter: !reset })
     .then(() => {
         console.log(`🔥 Все таблицы ${reset ? "пересозданы" : "синхронизированы"}!`);

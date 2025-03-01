@@ -28,6 +28,8 @@ export default function CatalogSite() {
     loadCategories();
   }, []);
 
+  console.log("API URL:", import.meta.env.VITE_API_URL);
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header внутри App.tsx */}
@@ -38,7 +40,7 @@ export default function CatalogSite() {
         <Button className="ml-2" onClick={toggleCatalog}>
           {isCatalogVisible ? "Скрыть каталог" : "Каталог"}
         </Button>
-        <BackButton rootPath="/" className="ml-2" />
+        {isCatalogVisible && <BackButton rootPath="/" className="ml-auto" />}
       </div>
 
       <div className="flex flex-1">
