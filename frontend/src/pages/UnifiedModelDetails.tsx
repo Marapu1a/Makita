@@ -301,7 +301,7 @@ const UnifiedModelDetails = () => {
       </div>
 
       {/* Таблица деталей */}
-      <div className="w-[40%] pl-4">
+      <div className="w-full pl-4">
         <PartsTable
           parts={parts}
           hoveredPart={hoveredPart}
@@ -309,6 +309,7 @@ const UnifiedModelDetails = () => {
           onPartHover={setHoveredPart}
           isSvg={isSVG}
           svgRef={svgContainerRef}
+          modelName={model ? model.name : "Неизвестная модель"}
         />
       </div>
     </div>

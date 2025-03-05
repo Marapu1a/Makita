@@ -4,6 +4,7 @@ import CategoryGrid from "./components/CategoryGrid";
 import CatalogSite from "./pages/CatalogSite";
 import Catalog from "./pages/Catalog";
 import CartPage from "./pages/CartPage";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import UnifiedModelDetails from "./pages/UnifiedModelDetails";
 
 import "./index.css";
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="model/:modelId" element={<UnifiedModelDetails />} />
         </Route>
         <Route path="/cart" element={<CartPage />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       </Routes>
     </Router>
   );

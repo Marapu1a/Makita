@@ -3,7 +3,7 @@ from PIL import Image
 from tqdm import tqdm
 
 # === Папка с изображениями ===
-FOLDER = r"D:\sites\makita-parts\frontend\public\images"
+FOLDER = r"D:\sites\makita-parts\frontend\parsers\images"
 
 def convert_images_to_webp(folder):
     for root, _, files in os.walk(folder):

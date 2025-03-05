@@ -9,15 +9,15 @@ const Header = () => {
   return (
     <header className="w-full border-b shadow-sm z-10">
       {/* Верхняя панель */}
-      <div className="flex justify-between items-center px-4 py-1 text-sm bg-gray-100">
+      <div className="flex justify-between items-center px-6 py-1 text-sm bg-gray-100 text-black">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-1">
             <Mail size={16} />
-            <span>zakaz@servismakita.ru</span>
+            <span>makita-snab@mail.ru</span>
           </div>
           <div className="flex items-center space-x-1">
             <Phone size={16} />
-            <span>+7 (495) 530-70-07</span>
+            <span>+7 (495) 215-02-99</span>
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -28,39 +28,65 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Основной хедер */}
-      <div className="flex justify-between items-center px-4 py-3 bg-white">
-        {/* Логотип */}
-        <Link to="/" className="text-2xl font-bold text-red-600">
-          Makita
-        </Link>
+      {/* Основной хедер с фоном */}
+      <div
+        className="relative flex items-center px-6 py-4 bg-cyan-800 text-white min-h-[120px]"
+        style={{
+          backgroundImage: "url('/images/header2.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center 24%",
+        }}
+      >
+        {/* Тёмный слой для контраста */}
+        <div className="absolute inset-0 bg-black/30"></div>
 
-        {/* Навигация */}
-        <nav className="flex space-x-6 text-lg">
-          <Link to="/" className="hover:text-red-600">
-            Каталог
-          </Link>
-          <Link to="/contacts" className="hover:text-red-600">
-            Контакты
-          </Link>
-          <a
-            href="https://makita-remont.ru"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-red-600"
+        {/* Контент */}
+        <div className="relative flex items-center w-full">
+          {/* Логотип + Навигация */}
+          <div className="flex items-center">
+            {/* Логотип */}
+            <Link to="/" className="flex items-center">
+              <img
+                src="/images/logo.webp"
+                alt="Makita Logo"
+                className="h-12 object-contain"
+              />
+            </Link>
+
+            {/* Навигация (прижата к логотипу) */}
+            <nav className="flex space-x-4 text-lg z-10 ml-6">
+              <Link
+                to="/"
+                className="hover:text-red-500 transition-all duration-100"
+              >
+                Каталог
+              </Link>
+              <Link
+                to="/contacts"
+                className="hover:text-red-500 transition-all duration-100"
+              >
+                Контакты
+              </Link>
+              <a
+                href="https://makita-snab.ru/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-red-500 transition-all duration-100"
+              >
+                Инструменты makita-snab.ru
+              </a>
+            </nav>
+          </div>
+
+          {/* Корзина (прижата вправо) */}
+          <Link
+            to="/cart"
+            className="flex items-center space-x-1 hover:text-red-500 transition-all duration-100 z-10 ml-auto"
           >
-            Инструменты makita-remont.ru
-          </a>
-        </nav>
-
-        {/* Корзина */}
-        <Link
-          to="/cart"
-          className="flex items-center space-x-1 hover:text-red-600"
-        >
-          <ShoppingCart size={24} />
-          <span>В корзине {totalItems} т.</span>
-        </Link>
+            <ShoppingCart size={24} />
+            <span>В корзине {totalItems} т.</span>
+          </Link>
+        </div>
       </div>
     </header>
   );

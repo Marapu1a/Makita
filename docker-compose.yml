@@ -27,5 +27,16 @@ services:
     depends_on:
       - db
 
+  admin-backend:
+    build: ./admin-backend
+    container_name: my_admin_backend
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "5001:5001"
+    depends_on:
+      - db
+
 volumes:
   postgres_data:

@@ -18,6 +18,7 @@ type PartsTableProps = {
   hoveredPart: Part | null;
   isSvg: boolean;
   svgRef: React.RefObject<HTMLDivElement>;
+  modelName: string;
 };
 
 const PartsTable: React.FC<PartsTableProps> = ({
@@ -27,6 +28,7 @@ const PartsTable: React.FC<PartsTableProps> = ({
   setShowTooltip,
   isSvg,
   svgRef,
+  modelName,
 }) => {
   const [selectedPart, setSelectedPart] = useState<Part | null>(null);
   useEffect(() => {
@@ -86,8 +88,8 @@ const PartsTable: React.FC<PartsTableProps> = ({
           onClose={() => setSelectedPart(null)}
         />
       )}
-      <div className="max-h-[600px] overflow-y-auto border rounded">
-        <h2 className="text-xl font-semibold mb-2">Таблица деталей</h2>
+      <div className="max-h-screen overflow-y-auto border rounded">
+        <h2 className="text-xl font-semibold mb-2">Модель {modelName}</h2>
         <table className="min-w-full text-sm text-left border-collapse">
           <thead>
             <tr className="bg-gray-200">

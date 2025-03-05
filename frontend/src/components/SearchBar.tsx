@@ -46,7 +46,7 @@ export default function SearchBar() {
   };
 
   return (
-    <div className="relative p-4 bg-gray-100 flex items-center">
+    <div className="relative p-4 bg-cyan-800 flex items-center">
       <div className="relative w-2/3">
         <input
           ref={inputRef}
@@ -55,14 +55,14 @@ export default function SearchBar() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onBlur={() => setTimeout(() => setSuggestions([]), 200)}
-          className="border p-2 w-full"
+          className="p-2 w-full bg-cyan-900 text-white rounded-sm focus:border-white transition-all duration-100 ease-in-out"
         />
         {suggestions.length > 0 && (
-          <ul className="absolute top-full left-0 w-full bg-white border shadow-md max-h-40 overflow-auto">
+          <ul className="absolute top-full left-0 w-full bg-cyan-800 border border-white shadow-lg max-h-40 overflow-auto rounded-sm">
             {suggestions.map((category) => (
               <li
                 key={category.id}
-                className="p-2 hover:bg-gray-200 cursor-pointer"
+                className="p-2 hover:bg-cyan-900 hover:text-white cursor-pointer transition-all duration-100"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleSelectCategory(category)}
               >

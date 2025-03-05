@@ -13,10 +13,10 @@ export default function BackButton({ className, rootPath }: BackButtonProps) {
 
   return (
     <button
-      className={`px-4 py-2 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+      className={`px-4 py-2 rounded-sm transition-all duration-100 focus:outline-none focus:ring-2 ${
         isAtRoot
-          ? "bg-gray-400 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:bg-gray-400 cursor-not-allowed"
-          : "bg-blue-500 text-white"
+          ? "bg-gray-500 text-gray-300 cursor-not-allowed"
+          : "bg-cyan-900 text-white hover:bg-cyan-600 focus:ring-white"
       } ${className}`}
       onClick={() => !isAtRoot && navigate(-1)}
       disabled={isAtRoot}
