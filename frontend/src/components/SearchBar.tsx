@@ -55,7 +55,7 @@ export default function SearchBar() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onBlur={() => setTimeout(() => setSuggestions([]), 200)}
-          className="p-2 w-full bg-cyan-900 text-white rounded-sm focus:border-white transition-all duration-100 ease-in-out"
+          className="p-2 w-full bg-cyan-900 text-white border border-white rounded-sm focus:border-white transition-all duration-100 ease-in-out"
         />
         {suggestions.length > 0 && (
           <ul className="absolute top-full left-0 w-full bg-cyan-800 border border-white shadow-lg max-h-40 overflow-auto rounded-sm">

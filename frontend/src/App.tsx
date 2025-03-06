@@ -1,11 +1,13 @@
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Header from "./components/Header";
 import CategoryGrid from "./components/CategoryGrid";
+import PartsIntro from "./pages/PartsIntro";
 import CatalogSite from "./pages/CatalogSite";
 import Catalog from "./pages/Catalog";
 import CartPage from "./pages/CartPage";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import UnifiedModelDetails from "./pages/UnifiedModelDetails";
+import Contacts from "./pages/Contacts";
 
 import "./index.css";
 
@@ -21,6 +23,8 @@ export default function App() {
         </Route>
         <Route path="/cart" element={<CartPage />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/info" element={<PartsIntro />} />
+        <Route path="/contacts" element={<Contacts />} />
       </Routes>
     </Router>
   );

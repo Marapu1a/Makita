@@ -1,5 +1,5 @@
 const sequelize = require("../config/database");
-const Part = require("./Part");
+const { Categories, Model, Part, Slide } = require('./models');
 
 const syncDB = async () => {
     try {
@@ -11,4 +11,4 @@ const syncDB = async () => {
     }
 };
 
-module.exports = { sequelize, syncDB, Part };
+module.exports = { sequelize, syncDB, Categories, Model, Part, Slide };

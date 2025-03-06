@@ -2,7 +2,7 @@ import { useState } from "react";
 
 const PartsIntro: React.FC = () => {
   const certificates = Array.from(
-    { length: 20 },
+    { length: 7 },
     (_, i) => `/images/sertificates/${i + 1}.webp`
   );
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -18,7 +18,7 @@ const PartsIntro: React.FC = () => {
   const closeModal = () => setIsModalOpen(false);
 
   return (
-    <div className="flex items-start gap-8">
+    <div className="flex container mx-auto pt-6 items-start gap-8">
       {/* Левая часть */}
       <div className="w-2/3">
         <h1 className="text-3xl font-bold mb-4">
@@ -48,9 +48,9 @@ const PartsIntro: React.FC = () => {
 
       {/* Правая часть - слайдер сертификатов */}
       <div className="w-1/3 flex flex-col items-center">
-        <h3 className="text-gray-700 mb-2">
-          Компания ООО "Снабтулс" является <br /> официальным Дилером торговых
-          марок:
+        <h3 className="text-gray-700 text-center mb-2">
+          Компания ООО "Снабтулс" является <br />
+          официальным дилером торговой марки Makita:
         </h3>
         <div
           className="relative w-[250px] h-[350px] border rounded overflow-hidden cursor-pointer"

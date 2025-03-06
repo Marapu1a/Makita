@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Outlet, Link } from "react-router-dom";
+import { ShoppingCart, Mail, Phone, User } from "lucide-react";
 import Button from "../components/Button";
 import BackButton from "../components/BackButton";
 import SearchBar from "../components/SearchBar";
-import PartsIntro from "../components/PartsIntro";
+import PartsIntro from "./PartsIntro";
 import { fetchCategories } from "../utils/api";
 
 interface Category {
@@ -13,14 +14,9 @@ interface Category {
 }
 
 export default function CatalogSite() {
-  const [isCatalogVisible, setCatalogVisible] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const navigate = useNavigate();
-
-  const toggleCatalog = () => {
-    setCatalogVisible(!isCatalogVisible);
-  };
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -36,51 +32,61 @@ export default function CatalogSite() {
     <div className="flex flex-col min-h-screen">
       {/* Header внутри App.tsx */}
 
-      {/* Search Bar */}
       <div className="p-4 bg-cyan-800 flex items-center text-white">
-        {isCatalogVisible && <SearchBar />}
+        {/* Поиск */}
+        <SearchBar />
 
-        <Button className="ml-2" onClick={toggleCatalog}>
-          {isCatalogVisible ? "Скрыть каталог" : "Каталог"}
-        </Button>
+        {/* Вертикальная линия-разделитель */}
+        <div className="h-6 w-px bg-white opacity-50 mx-4"></div>
 
-        {isCatalogVisible && <BackButton rootPath="/" className="ml-auto" />}
+        {/* Контакты */}
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-1">
+            <Mail size={16} />
+            <span>makita-snab@mail.ru</span>
+          </div>
+
+          {/* Разделитель */}
+          <div className="h-6 w-px bg-white opacity-50"></div>
+
+          <div className="flex items-center space-x-1">
+            <Phone size={16} />
+            <span>+7 (495) 215-02-99</span>
+          </div>
+        </div>
+
+        {/* Кнопка "Назад" (прижата вправо) */}
+        <BackButton rootPath="/" className="ml-auto" />
       </div>
 
       <div className="flex flex-1">
         {/* Sidebar */}
-        {isCatalogVisible && (
-          <aside className="w-64 bg-gradient-to-b from-cyan-700 to-cyan-800 text-white p-4 pr-0 overflow-y-auto">
-            <h2 className="font-bold mb-2 text-lg">Категории</h2>
-            <ul>
-              {categories.map((category) => (
-                <li
-                  key={category.id}
-                  className={`mb-1 cursor-pointer px-4 py-2 pr-2 transition-all rounded-sm duration-100 ease-in-out
+        <aside className="w-64 bg-gradient-to-b from-cyan-700 to-cyan-800 text-white p-4 pr-0 overflow-y-auto">
+          <h2 className="font-bold mb-2 text-lg">Категории</h2>
+          <ul>
+            {categories.map((category) => (
+              <li
+                key={category.id}
+                className={`mb-1 cursor-pointer px-4 py-2 pr-2 transition-all rounded-sm duration-100 ease-in-out
           ${
             selectedCategory === category.id
               ? "bg-cyan-900 border-l-4 border-red-500"
               : "hover:bg-cyan-900 hover:border-l-4 hover:border-red-500"
           }`}
-                  onClick={() => {
-                    setSelectedCategory(category.id);
-                    navigate(`/categories/${category.id}`);
-                  }}
-                >
-                  {category.name}
-                </li>
-              ))}
-            </ul>
-          </aside>
-        )}
+                onClick={() => {
+                  setSelectedCategory(category.id);
+                  navigate(`/categories/${category.id}`);
+                }}
+              >
+                {category.name}
+              </li>
+            ))}
+          </ul>
+        </aside>
 
         {/* Main Content */}
-        <main className={`p-4 ${isCatalogVisible ? "w-full" : "w-full"}`}>
-          {isCatalogVisible ? (
-            <Outlet /> // Здесь отрендерятся вложенные маршруты
-          ) : (
-            <PartsIntro />
-          )}
+        <main className="p-4 w-full">
+          <Outlet /> {/* Здесь отрендерятся вложенные маршруты */}
         </main>
       </div>
 

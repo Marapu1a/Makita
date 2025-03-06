@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart, Mail, Phone, User } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 import { useCart } from "../utils/useCart";
 
 const Header = () => {
@@ -8,26 +8,6 @@ const Header = () => {
 
   return (
     <header className="w-full border-b shadow-sm z-10">
-      {/* Верхняя панель */}
-      <div className="flex justify-between items-center px-6 py-1 text-sm bg-gray-100 text-black">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-1">
-            <Mail size={16} />
-            <span>makita-snab@mail.ru</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <Phone size={16} />
-            <span>+7 (495) 215-02-99</span>
-          </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <User size={16} />
-          <Link to="/login" className="hover:underline">
-            Войти в личный кабинет
-          </Link>
-        </div>
-      </div>
-
       {/* Основной хедер с фоном */}
       <div
         className="relative flex items-center px-6 py-4 bg-cyan-800 text-white min-h-[120px]"
@@ -56,6 +36,13 @@ const Header = () => {
             {/* Навигация (прижата к логотипу) */}
             <nav className="flex space-x-4 text-lg z-10 ml-6">
               <Link
+                to={"/info"}
+                className="hover:text-red-500 transition-all duration-100"
+              >
+                Информация
+              </Link>
+
+              <Link
                 to="/"
                 className="hover:text-red-500 transition-all duration-100"
               >
@@ -71,20 +58,20 @@ const Header = () => {
                 href="https://makita-snab.ru/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-red-500 transition-all duration-100"
+                className="group relative hover:text-red-500 transition-all duration-100"
               >
-                Инструменты makita-snab.ru
+                <span className="group-hover:hidden">Инструменты</span>
+                <span className="hidden group-hover:inline">
+                  makita-snab.ru
+                </span>
               </a>
             </nav>
           </div>
 
-          {/* Корзина (прижата вправо) */}
-          <Link
-            to="/cart"
-            className="flex items-center space-x-1 hover:text-red-500 transition-all duration-100 z-10 ml-auto"
-          >
+          <Link to="/cart" className="cart-button">
             <ShoppingCart size={24} />
             <span>В корзине {totalItems} т.</span>
+            <span className="cart-glow"></span>
           </Link>
         </div>
       </div>

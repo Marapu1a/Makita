@@ -16,7 +16,7 @@ export default function BackButton({ className, rootPath }: BackButtonProps) {
       className={`px-4 py-2 rounded-sm transition-all duration-100 focus:outline-none focus:ring-2 ${
         isAtRoot
           ? "bg-gray-500 text-gray-300 cursor-not-allowed"
-          : "bg-cyan-900 text-white hover:bg-cyan-600 focus:ring-white"
+          : "bg-cyan-900 text-white border border-white rounded-sm hover:bg-cyan-600 focus:ring-white"
       } ${className}`}
       onClick={() => !isAtRoot && navigate(-1)}
       disabled={isAtRoot}
