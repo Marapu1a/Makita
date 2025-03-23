@@ -1,47 +1,43 @@
 import { useState } from "react";
-import api from "../api/api";
+import { login } from "../api/api";
 
 const Login = () => {
-  const [login, setLogin] = useState("");
+  const [loginInput, setLoginInput] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async () => {
     try {
-      const res = await api.post("/auth/login", { login, password });
-      localStorage.setItem("token", res.data.token);
-      window.location.href = "/"; // Перенаправляем в админку
+      const token = await login(loginInput, password);
+      localStorage.setItem("token", token); // Сохраняем токен
+      window.location.href = "/dashboard"; // Редирект в админку
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
-      setError("Ошибка входа");
+      setError("Неверный логин или пароль");
     }
   };
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100">
-      <form
-        onSubmit={handleLogin}
-        className="bg-white p-6 rounded shadow-md w-80"
-      >
-        <h2 className="text-xl font-bold mb-4">Вход</h2>
-        {error && <p className="text-red-500">{error}</p>}
-        <input
-          type="text"
-          placeholder="Логин"
-          value={login}
-          onChange={(e) => setLogin(e.target.value)}
-          className="w-full p-2 border mb-2"
-        />
-        <input
-          type="password"
-          placeholder="Пароль"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-2 border mb-2"
-        />
-        <button className="w-full bg-blue-500 text-white p-2">Войти</button>
-      </form>
+    <div className="flex flex-col items-center justify-center h-screen">
+      <h1 className="text-2xl font-bold">Вход в админку</h1>
+      {error && <p className="text-red-500">{error}</p>}
+      <input
+        type="text"
+        placeholder="Логин"
+        value={loginInput}
+        onChange={(e) => setLoginInput(e.target.value)}
+        className="border p-2 mt-4"
+      />
+      <input
+        type="password"
+        placeholder="Пароль"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        className="border p-2 mt-2"
+      />
+      <button onClick={handleLogin} className="bg-blue-500 text-white p-2 mt-4">
+        Войти
+      </button>
     </div>
   );
 };

@@ -7,13 +7,33 @@ const api = axios.create({
     headers: {
         "Content-Type": "application/json",
     },
+    withCredentials: true,
 });
 
-// Добавляем токен в запросы
-api.interceptors.request.use((config) => {
-    const token = localStorage.getItem("token");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-});
+// --- Функции API ---
+
+// Авторизация (получить токен)
+export const login = async (login: string, password: string) => {
+    const response = await api.post("/api/admin/login", { login, password });
+    return response.data.token;
+};
+
+// Получить список категорий
+export const fetchCategories = async () => {
+    const response = await api.get("/api/admin/categories");
+    return response.data.data;
+};
+
+// Получить список моделей по категории
+export const fetchModelsByCategory = async (categoryId: number) => {
+    const response = await api.get(`/api/admin/models?category_id=${categoryId}`);
+    return response.data.data;
+};
+
+// Получить детали по модели
+export const fetchPartsByModel = async (modelId: number) => {
+    const response = await api.get(`/api/admin/parts/model/${modelId}`);
+    return response.data.data;
+};
 
 export default api;

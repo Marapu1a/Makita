@@ -10,9 +10,10 @@ type CartItem = {
 
 type CartState = {
     cartItems: CartItem[];
-    addToCart: (item: CartItem) => void; // Убрали Omit
+    addToCart: (item: CartItem) => void;
     updateQuantity: (id: number, quantity: number) => void;
     removeFromCart: (id: number) => void;
+    clearCart: () => void;
 };
 
 export const useCart = create<CartState>((set) => {
@@ -55,6 +56,12 @@ export const useCart = create<CartState>((set) => {
                 const updatedCart = state.cartItems.filter((item) => item.id !== id);
                 updateLocalStorage(updatedCart);
                 return { cartItems: updatedCart };
+            }),
+
+        clearCart: () =>
+            set(() => {
+                updateLocalStorage([]);
+                return { cartItems: [] };
             }),
     };
 });

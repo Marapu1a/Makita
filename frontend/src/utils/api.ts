@@ -74,3 +74,24 @@ export const fetchSlidesByModel = async (modelId: string) => {
         return [];
     }
 };
+
+// Оформление заказа
+export const createOrder = async (orderData: any) => {
+    try {
+        // Формируем корректный объект для заказа
+        const formattedCart = orderData.cart.map((item: any) => ({
+            product_id: item.id, // Используем ID из Part
+            quantity: item.quantity,
+            price: item.price,
+        }));
+
+        const payload = { ...orderData, cart: formattedCart };
+
+        const response = await axios.post(`${API_URL}/orders`, payload);
+
+        return response.data;
+    } catch (error) {
+        console.error("Ошибка при оформлении заказа:", error);
+        return { success: false, message: "Ошибка сервера" };
+    }
+};

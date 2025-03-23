@@ -1,15 +1,45 @@
-import BackButton from "../components/BackButton";
-import { useCart } from "../utils/useCart";
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useCart } from "../utils/useCart";
+import { createOrder } from "../utils/api";
+import OrderModal from "../components/OrderModal";
 
 const CartPage = () => {
-  const { cartItems, updateQuantity, removeFromCart } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, clearCart } = useCart();
+  const [isOrderModalOpen, setOrderModalOpen] = useState(false);
 
-  // Итоговая сумма
   const totalPrice = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
+
+  const handleOrderSubmit = async (
+    orderData: any
+  ): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const result = await createOrder({
+        ...orderData,
+        cart: cartItems,
+        total_price: totalPrice,
+      });
+
+      if (result.success) {
+        clearCart();
+        setOrderModalOpen(false);
+        return { success: true };
+      } else {
+        return {
+          success: false,
+          message: result.message || "Ошибка при оформлении заказа",
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: "Ошибка сервера. Попробуйте снова позже.",
+      };
+    }
+  };
 
   return (
     <div className="container mx-auto py-6">
@@ -84,10 +114,20 @@ const CartPage = () => {
             Итого: {totalPrice.toLocaleString()} ₽
           </div>
 
-          <button className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+          <button
+            onClick={() => setOrderModalOpen(true)}
+            className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+          >
             Оформить заказ
           </button>
-          <BackButton className="ml-2" rootPath="/" />
+
+          <OrderModal
+            isOpen={isOrderModalOpen}
+            onClose={() => setOrderModalOpen(false)}
+            onSubmit={handleOrderSubmit}
+            totalPrice={totalPrice}
+            cartItems={cartItems}
+          />
         </>
       )}
     </div>

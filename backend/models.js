@@ -71,6 +71,49 @@ const Slide = sequelize.define('Slide', {
     ]
 });
 
+const Order = sequelize.define('Order', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    name: { type: DataTypes.STRING, allowNull: false },
+    phone: { type: DataTypes.STRING, allowNull: false },
+    email: { type: DataTypes.STRING, allowNull: false },
+    delivery_method: {
+        type: DataTypes.ENUM('Самовывоз', 'Доставка', 'Отправка в регион'),
+        allowNull: false
+    },
+    transport_company: { type: DataTypes.STRING, allowNull: true },
+    city: { type: DataTypes.STRING, allowNull: true },
+    street: { type: DataTypes.STRING, allowNull: true },
+    house: { type: DataTypes.STRING, allowNull: true },
+    apartment: { type: DataTypes.STRING, allowNull: true },
+    comment: { type: DataTypes.TEXT, allowNull: true },
+    total_price: { type: DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
+    status: {
+        type: DataTypes.ENUM('Новый', 'В обработке', 'Отправлен', 'Завершён', 'Отменён'),
+        allowNull: false,
+        defaultValue: 'Новый'
+    },
+}, {
+    tableName: 'orders',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: false,
+});
+
+const OrderItem = sequelize.define('OrderItem', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    order_id: { type: DataTypes.INTEGER, allowNull: false },
+    product_id: { type: DataTypes.INTEGER, allowNull: false },
+    quantity: { type: DataTypes.INTEGER, allowNull: false },
+    price: { type: DataTypes.DOUBLE, allowNull: false }
+}, {
+    tableName: 'order_items',
+    timestamps: false,
+});
+
+// Устанавливаем связи
+Order.hasMany(OrderItem, { foreignKey: 'order_id', onDelete: 'CASCADE' });
+OrderItem.belongsTo(Order, { foreignKey: 'order_id' });
+
 Categories.hasMany(Model, { foreignKey: 'category_id' });
 Model.belongsTo(Categories, { foreignKey: 'category_id' });
 
@@ -95,4 +138,4 @@ sequelize.sync({ force: reset, alter: !reset })
         console.error("❌ Ошибка при создании таблиц:", err);
     });
 
-module.exports = { Categories, Model, Part, Slide };
+module.exports = { Categories, Model, Part, Slide, Order, OrderItem };

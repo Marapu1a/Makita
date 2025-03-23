@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { fetchCategories, fetchModelsByCategory } from "../utils/api"; // API-функции
+import { useParams, Link } from "react-router-dom";
+import { fetchCategories, fetchModelsByCategory } from "../utils/api";
+
+import pdfIndex from "../pdf-index.json";
 
 type Category = {
   id: string;
@@ -15,11 +17,15 @@ type Model = {
   img: string;
 };
 
-// Функция для приведения названий файлов в порядок
+type PdfModel = {
+  name: string;
+  path: string;
+  category: string;
+};
+
 const sanitizeFileName = (name: string) =>
   name.replace(/\s+/g, "_").replace(/[\/\\]/g, "_");
 
-// Добавление `img` во все категории
 const addImagesToCategories = (categories: Category[]): Category[] => {
   return categories.map((category) => ({
     ...category,
@@ -29,28 +35,36 @@ const addImagesToCategories = (categories: Category[]): Category[] => {
 };
 
 export default function CategoryGrid() {
-  const { categoryId } = useParams(); // Получаем categoryId из URL
+  const { categoryId } = useParams();
   const [categories, setCategories] = useState<Category[]>([]);
   const [models, setModels] = useState<Model[] | null>(null);
+  const [pdfModels, setPdfModels] = useState<PdfModel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categoryName, setCategoryName] = useState<string>("");
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
 
-      // Загружаем вложенные категории
       const subCategories = await fetchCategories(categoryId || null);
+      const allCategories = await fetchCategories(null);
+
+      const found = allCategories.find(
+        (cat: { id: any }) => String(cat.id) === String(categoryId)
+      );
+      if (found) setCategoryName(found.name);
 
       if (subCategories.length > 0) {
         setCategories(subCategories);
-        setModels(null); // Есть вложенные категории — не грузим модели
+        setModels(null);
       } else {
-        // Если вложенных нет — загружаем модели
         const modelsData = await fetchModelsByCategory(categoryId || "");
         setModels(modelsData);
         setCategories([]);
       }
 
+      // Используем локальный импорт
+      setPdfModels(pdfIndex);
       setLoading(false);
     };
 
@@ -58,6 +72,10 @@ export default function CategoryGrid() {
   }, [categoryId]);
 
   if (loading) return <div>Загрузка...</div>;
+
+  const filteredPdfModels = pdfModels.filter(
+    (pdf) => pdf.category === categoryName
+  );
 
   return (
     <div className="flex flex-col items-center">
@@ -69,6 +87,20 @@ export default function CategoryGrid() {
                 <p className="text-center font-semibold">{model.name}</p>
               </div>
             </Link>
+          ))}
+          {filteredPdfModels.map((model) => (
+            <a
+              key={model.name}
+              href={model.path}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <div className="bg-white p-4 rounded-md shadow-md hover:bg-gray-100">
+                <p className="text-center font-semibold text-blue-600 underline">
+                  {model.name}
+                </p>
+              </div>
+            </a>
           ))}
         </div>
       ) : (

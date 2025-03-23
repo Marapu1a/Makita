@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Outlet, Link } from "react-router-dom";
-import { ShoppingCart, Mail, Phone, User } from "lucide-react";
-import Button from "../components/Button";
+import { Mail, Phone } from "lucide-react";
 import BackButton from "../components/BackButton";
 import SearchBar from "../components/SearchBar";
-import PartsIntro from "./PartsIntro";
 import { fetchCategories } from "../utils/api";
 
 interface Category {

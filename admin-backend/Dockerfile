@@ -1,6 +1,14 @@
+# Используем официальный образ Node.js
 FROM node:18-alpine
+
 WORKDIR /app
+
+# Копируем package.json и устанавливаем зависимости
 COPY package*.json ./
-RUN npm install --production
+RUN npm install
+
+# Копируем весь код проекта
 COPY . .
-CMD ["node", "src/app.js"]
+
+# Запускаем сервер
+CMD ["node", "app.js"]
