@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-type CartItem = {
+export type CartItem = {
     id: number;
     part_number: string;
     name: string;

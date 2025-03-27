@@ -53,14 +53,18 @@ const PartsTable: React.FC<PartsTableProps> = ({
         if (!match) return;
 
         const partNumber = match[1];
-        const matched = parts.some(
+        const partMatch = parts.find(
           (p) => isMatchingPart(p) && p.number.toString() === partNumber
         );
 
         useEl.setAttribute(
           "style",
           `overflow: visible; opacity: 1; fill: ${
-            matched ? "rgba(0, 255, 0, 0.7)" : "rgba(0, 0, 0, 0)"
+            partMatch
+              ? partMatch.availability
+                ? "rgba(0, 255, 0, 0.7)"
+                : "rgba(255, 0, 0, 0.7)"
+              : "rgba(0, 0, 0, 0)"
           };`
         );
       });
@@ -70,9 +74,13 @@ const PartsTable: React.FC<PartsTableProps> = ({
         const partDiv = document.getElementById(`part-${part.id}`);
         if (!partDiv) return;
 
-        partDiv.style.backgroundColor = isMatchingPart(part)
-          ? "rgba(0, 255, 0, 0.7)" // ✅ Подсветка
-          : "rgba(255, 0, 0, 0)"; // ❌ Снятие подсветки
+        if (isMatchingPart(part)) {
+          partDiv.style.backgroundColor = part.availability
+            ? "rgba(0, 255, 0, 0.7)" // ✅ есть в наличии
+            : "rgba(255, 0, 0, 0.7)"; // ❌ нет в наличии
+        } else {
+          partDiv.style.backgroundColor = "rgba(0, 0, 0, 0)"; // не подсвечивать
+        }
       });
     }
   }, [hoveredPart, isSvg, parts]);

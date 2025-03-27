@@ -1,12 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useCart } from "../utils/useCart";
+import { useCart, CartItem } from "../utils/useCart";
 import { createOrder } from "../utils/api";
 import OrderModal from "../components/OrderModal";
+import OrderConfirmationModal from "../components/OrderConfirmationModal";
 
 const CartPage = () => {
   const { cartItems, updateQuantity, removeFromCart, clearCart } = useCart();
   const [isOrderModalOpen, setOrderModalOpen] = useState(false);
+  const [confirmedCart, setConfirmedCart] = useState<CartItem[] | any>(null);
+
+  useEffect(() => {
+    console.log("confirmedCart", confirmedCart);
+  }, [confirmedCart]);
 
   const totalPrice = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -24,6 +30,7 @@ const CartPage = () => {
       });
 
       if (result.success) {
+        setConfirmedCart([...cartItems]); // триггерим обновление
         clearCart();
         setOrderModalOpen(false);
         return { success: true };
@@ -129,6 +136,13 @@ const CartPage = () => {
             cartItems={cartItems}
           />
         </>
+      )}
+      {/* ВНЕ УСЛОВИЯ, чтобы всегда рендерилось при confirmedCart */}
+      {confirmedCart && confirmedCart.length > 0 && (
+        <OrderConfirmationModal
+          cart={confirmedCart}
+          onClose={() => setConfirmedCart(null)}
+        />
       )}
     </div>
   );

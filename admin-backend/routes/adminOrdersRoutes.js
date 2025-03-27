@@ -1,5 +1,5 @@
 const express = require("express");
-const { Order, OrderItem } = require("../models");
+const { Order, OrderItem, Model, Part, Categories } = require("../models");
 const router = express.Router();
 const { Op } = require("sequelize");
 
@@ -13,7 +13,7 @@ router.get("/admin/orders", async (req, res) => {
         const orders = await Order.findAll({
             where: whereClause,
             include: [{ model: OrderItem, as: "items" }],
-            order: [["createdAt", "DESC"]],
+            order: [["created_at", "DESC"]],
         });
 
         res.json({ success: true, data: orders });
@@ -28,7 +28,30 @@ router.get("/admin/orders/:id", async (req, res) => {
     try {
         const { id } = req.params;
         const order = await Order.findByPk(id, {
-            include: [{ model: OrderItem, as: "items" }],
+            include: [
+                {
+                    model: OrderItem,
+                    as: "items",
+                    include: [
+                        {
+                            model: Part,
+                            as: "part",
+                            include: [
+                                {
+                                    model: Model,
+                                    as: "model",
+                                    include: [
+                                        {
+                                            model: Categories,
+                                            as: "category",
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
         });
 
         if (!order) {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { updatePart } from "../api/api";
 
 interface Part {
   id: number;
@@ -16,6 +17,19 @@ interface PartEditorProps {
 const PartEditor: React.FC<PartEditorProps> = ({ part, onClose }) => {
   const [editedPart, setEditedPart] = useState<Part>(part);
   const [isEditing, setIsEditing] = useState(false);
+
+  const handleSave = async () => {
+    try {
+      await updatePart(editedPart.id, {
+        name: editedPart.name,
+        price: editedPart.price,
+        availability: editedPart.availability,
+      });
+      onClose(); // Закрываем по сохранению
+    } catch (err) {
+      console.error("Ошибка при обновлении детали", err);
+    }
+  };
 
   return (
     <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50">
@@ -82,7 +96,10 @@ const PartEditor: React.FC<PartEditorProps> = ({ part, onClose }) => {
             </label>
 
             <div className="flex gap-4">
-              <button className="bg-green-500 text-white px-4 py-2 rounded">
+              <button
+                className="bg-green-500 text-white px-4 py-2 rounded"
+                onClick={handleSave}
+              >
                 Сохранить
               </button>
               <button

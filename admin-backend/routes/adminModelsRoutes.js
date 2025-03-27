@@ -12,7 +12,7 @@ router.get("/admin/models", async (req, res) => {
 
         const models = await Model.findAll({
             where: { category_id },
-            include: [{ model: Categories, as: "Category", attributes: ["name"] }],
+            include: [{ model: Categories, as: "category", attributes: ["name"] }],
         });
 
         const modelsWithCategory = models.map((model) => ({
@@ -20,7 +20,7 @@ router.get("/admin/models", async (req, res) => {
             name: model.name,
             image_path: model.image_path,
             category_id: model.category_id,
-            category_name: model.Category?.name || "Неизвестно",
+            category_name: model.category?.name || "Неизвестно",
         }));
 
         res.json({ success: true, data: modelsWithCategory });
@@ -37,7 +37,7 @@ router.get("/admin/models/:modelId", async (req, res) => {
 
         const model = await Model.findOne({
             where: { id: modelId },
-            include: [{ model: Categories, as: "Category", attributes: ["name"] }],
+            include: [{ model: Categories, as: "category", attributes: ["name"] }],
         });
 
         if (!model) {
@@ -49,7 +49,7 @@ router.get("/admin/models/:modelId", async (req, res) => {
             data: {
                 id: model.id,
                 name: model.name,
-                category_name: model.Category?.name || "Неизвестно",
+                category_name: model.category?.name || "Неизвестно",
             },
         });
     } catch (err) {

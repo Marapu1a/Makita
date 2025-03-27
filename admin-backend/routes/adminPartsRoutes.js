@@ -25,9 +25,10 @@ router.patch("/admin/parts/:id", async (req, res) => {
             return res.status(404).json({ success: false, error: "Деталь не найдена" });
         }
 
-        part.name = name ?? part.name;
-        part.price = price ?? part.price;
-        part.availability = availability ?? part.availability;
+        if (name !== undefined) part.name = name;
+        if (price !== undefined) part.price = price;
+        if (availability !== undefined) part.availability = availability;
+
 
         await part.save();
         res.json({ success: true, data: part });

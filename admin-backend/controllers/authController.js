@@ -26,7 +26,7 @@ const login = async (req, res) => {
         maxAge: 24 * 60 * 60 * 1000, // 1 день
     });
 
-    res.json({ success: true });
+    res.json({ success: true, token });
 };
 
 

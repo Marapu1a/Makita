@@ -110,25 +110,27 @@ const OrderItem = sequelize.define('OrderItem', {
     timestamps: false,
 });
 
-// Устанавливаем связи
-Order.hasMany(OrderItem, { foreignKey: 'order_id', onDelete: 'CASCADE' });
-OrderItem.belongsTo(Order, { foreignKey: 'order_id' });
+// 🔗 Ассоциации (унифицированные с `as`)
+Order.hasMany(OrderItem, { foreignKey: 'order_id', onDelete: 'CASCADE', as: 'items' });
+OrderItem.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
+OrderItem.belongsTo(Part, { foreignKey: 'product_id', as: 'part' });
 
-Categories.hasMany(Model, { foreignKey: 'category_id' });
-Model.belongsTo(Categories, { foreignKey: 'category_id' });
+Categories.hasMany(Model, { foreignKey: 'category_id', as: 'models' });
+Model.belongsTo(Categories, { foreignKey: 'category_id', as: 'category' });
 
-Categories.hasMany(Categories, { as: "subcategories", foreignKey: "parent_id" });
-Categories.belongsTo(Categories, { as: "parentCategory", foreignKey: "parent_id" });
+Categories.hasMany(Categories, { as: 'subcategories', foreignKey: 'parent_id' });
+Categories.belongsTo(Categories, { as: 'parentCategory', foreignKey: 'parent_id' });
 
-Model.hasMany(Part, { foreignKey: 'model_id' });
-Part.belongsTo(Model, { foreignKey: 'model_id' });
+Model.hasMany(Part, { foreignKey: 'model_id', as: 'parts' });
+Part.belongsTo(Model, { foreignKey: 'model_id', as: 'model' });
 
-Model.hasMany(Slide, { foreignKey: 'model_id' });
-Slide.belongsTo(Model, { foreignKey: 'model_id' });
+Model.hasMany(Slide, { foreignKey: 'model_id', as: 'slides' });
+Slide.belongsTo(Model, { foreignKey: 'model_id', as: 'model' });
 
-Slide.hasMany(Part, { foreignKey: 'slide_id' });
-Part.belongsTo(Slide, { foreignKey: 'slide_id' });
+Slide.hasMany(Part, { foreignKey: 'slide_id', as: 'parts' });
+Part.belongsTo(Slide, { foreignKey: 'slide_id', as: 'slide' });
 
+// 🔃 Синхронизация
 const reset = process.argv.includes('--reset');
 sequelize.sync({ force: reset, alter: !reset })
     .then(() => {
@@ -138,4 +140,11 @@ sequelize.sync({ force: reset, alter: !reset })
         console.error("❌ Ошибка при создании таблиц:", err);
     });
 
-module.exports = { Categories, Model, Part, Slide, Order, OrderItem };
+module.exports = {
+    Categories,
+    Model,
+    Part,
+    Slide,
+    Order,
+    OrderItem
+};

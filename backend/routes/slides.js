@@ -13,6 +13,7 @@ router.get("/model/:modelId", async (req, res) => {
             include: [
                 {
                     model: Part,
+                    as: 'parts',
                     attributes: [
                         "id",
                         "number",
