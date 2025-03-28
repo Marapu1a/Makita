@@ -128,8 +128,13 @@ const PartsTable: React.FC<PartsTableProps> = ({
                 </td>
                 <td className="border px-2 py-1 text-center">
                   <button
-                    className="bg-red-600 text-white px-2 py-1 rounded"
-                    onClick={() => setSelectedPart(part)}
+                    className={`px-2 py-1 rounded text-white ${
+                      part.availability
+                        ? "bg-red-600 hover:bg-red-700"
+                        : "bg-gray-400 cursor-not-allowed"
+                    }`}
+                    onClick={() => part.availability && setSelectedPart(part)}
+                    disabled={!part.availability}
                   >
                     Добавить
                   </button>

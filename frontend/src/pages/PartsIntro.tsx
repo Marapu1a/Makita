@@ -18,9 +18,9 @@ const PartsIntro: React.FC = () => {
   const closeModal = () => setIsModalOpen(false);
 
   return (
-    <div className="flex container mx-auto pt-6 items-start gap-8">
+    <div className="flex flex-col lg:flex-row container mx-auto pt-6 items-start gap-8 px-4">
       {/* Левая часть */}
-      <div className="w-2/3">
+      <div className="w-full lg:w-2/3">
         <h1 className="text-3xl font-bold mb-4">
           Запчасти для инструментов Makita
         </h1>
@@ -47,7 +47,7 @@ const PartsIntro: React.FC = () => {
       </div>
 
       {/* Правая часть - слайдер сертификатов */}
-      <div className="w-1/3 flex flex-col items-center">
+      <div className="w-full lg:w-1/3 flex flex-col items-center mt-6 lg:mt-0">
         <h3 className="text-gray-700 text-center mb-2">
           Компания ООО "Снабтулс" является <br />
           официальным дилером торговой марки Makita:

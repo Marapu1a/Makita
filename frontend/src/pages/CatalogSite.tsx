@@ -30,47 +30,54 @@ export default function CatalogSite() {
     <div className="flex flex-col min-h-screen">
       {/* Header внутри App.tsx */}
 
-      <div className="p-4 bg-cyan-800 flex items-center text-white">
+      {/* 🧠 Top Bar */}
+      <div className="bg-cyan-800 text-white flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-0">
         {/* Поиск */}
-        <SearchBar />
-
-        {/* Вертикальная линия-разделитель */}
-        <div className="h-6 w-px bg-white opacity-50 mx-4"></div>
-
-        {/* Контакты */}
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-1">
-            <Mail size={16} />
-            <span>makita-snab@mail.ru</span>
-          </div>
-
-          {/* Разделитель */}
-          <div className="h-6 w-px bg-white opacity-50"></div>
-
-          <div className="flex items-center space-x-1">
-            <Phone size={16} />
-            <span>+7 (495) 215-02-99</span>
-          </div>
+        <div className="flex-1">
+          <SearchBar />
         </div>
 
-        {/* Кнопка "Назад" (прижата вправо) */}
-        <BackButton rootPath="/" className="ml-auto" />
+        {/* Назад */}
+        <div className="sm:ml-auto">
+          <BackButton rootPath="/" />
+        </div>
+
+        {/* Разделитель */}
+        <div className="hidden sm:block h-6 w-px bg-white opacity-50" />
+
+        {/* Контакты */}
+        <div className="p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 text-sm">
+            <div className="flex items-center space-x-1">
+              <Mail size={16} />
+              <span>makita-snab@mail.ru</span>
+            </div>
+
+            <div className="hidden sm:block h-6 w-px bg-white opacity-50" />
+
+            <div className="flex items-center space-x-1">
+              <Phone size={16} />
+              <span>+7 (495) 215-02-99</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="flex flex-1">
+      {/* 🧱 Контент + сайдбар */}
+      <div className="flex flex-col lg:flex-row flex-1">
         {/* Sidebar */}
-        <aside className="w-64 bg-gradient-to-b from-cyan-700 to-cyan-800 text-white p-4 pr-0 overflow-y-auto">
+        <aside className="hidden lg:block lg:w-64 bg-gradient-to-b from-cyan-700 to-cyan-800 text-white p-4 overflow-y-auto">
           <h2 className="font-bold mb-2 text-lg">Категории</h2>
           <ul>
             {categories.map((category) => (
               <li
                 key={category.id}
-                className={`mb-1 cursor-pointer px-4 py-2 pr-2 transition-all rounded-sm duration-100 ease-in-out
-          ${
-            selectedCategory === category.id
-              ? "bg-cyan-900 border-l-4 border-red-500"
-              : "hover:bg-cyan-900 hover:border-l-4 hover:border-red-500"
-          }`}
+                className={`mb-1 cursor-pointer px-4 py-2 transition-all rounded-sm duration-100 ease-in-out
+              ${
+                selectedCategory === category.id
+                  ? "bg-cyan-900 border-l-4 border-red-500"
+                  : "hover:bg-cyan-900 hover:border-l-4 hover:border-red-500"
+              }`}
                 onClick={() => {
                   setSelectedCategory(category.id);
                   navigate(`/categories/${category.id}`);
@@ -82,14 +89,14 @@ export default function CatalogSite() {
           </ul>
         </aside>
 
-        {/* Main Content */}
-        <main className="p-4 w-full">
-          <Outlet /> {/* Здесь отрендерятся вложенные маршруты */}
+        {/* Основной контент */}
+        <main className="p-4 w-full overflow-x-auto max-w-full">
+          <Outlet />
         </main>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-800 text-white p-4 text-center">
+      {/* ⚓ Footer */}
+      <footer className="bg-gray-800 text-white p-4 text-sm text-center max-w-screen-sm mx-auto">
         <p className="underline">
           <Link to="/privacy-policy">Политика конфиденциальности</Link>
         </p>

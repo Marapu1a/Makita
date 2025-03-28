@@ -49,9 +49,21 @@ const UnifiedModelDetails = () => {
   }>({});
   const [hoveredPart, setHoveredPart] = useState<Part | null>(null);
   const [showTooltip, setShowTooltip] = useState<boolean>(false);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+  const [showModal, setShowModal] = useState<boolean>(false);
 
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const svgContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    handleResize(); // инициализация при монтировании
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -209,7 +221,7 @@ const UnifiedModelDetails = () => {
       onMouseMove={handleMouseMove} // ✅ Глобальный слушатель для движения мыши
     >
       {/* Основной блок со схемой и SVG */}
-      <div className="relative flex flex-col items-center w-2/3">
+      <div className="relative flex-col items-center w-full hidden md:flex">
         <div
           className="relative"
           style={{
@@ -286,7 +298,7 @@ const UnifiedModelDetails = () => {
       </div>
 
       {/* Превью слайдов - вертикальный список */}
-      <div className="flex flex-col items-center w-20 ml-4 space-y-2 overflow-y-auto">
+      <div className="flex-col items-center w-20 ml-4 space-y-2 overflow-y-auto hidden md:flex">
         {slides.map((slide, index) => (
           <img
             key={slide.slide_number}
@@ -299,6 +311,60 @@ const UnifiedModelDetails = () => {
           />
         ))}
       </div>
+
+      {isMobile && (
+        <button
+          onClick={() => setShowModal(true)}
+          className="fixed bottom-4 right-4 z-50 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg md:hidden"
+        >
+          Показать схему
+        </button>
+      )}
+
+      {isMobile && showModal && (
+        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
+          <div className="flex justify-between items-center p-4 border-b">
+            <h3 className="text-lg font-semibold">Схема</h3>
+            <button
+              onClick={() => setShowModal(false)}
+              className="text-gray-600 hover:text-black text-xl"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="p-4">
+            {/* Слайд */}
+            {activeSlide && (
+              <div className="relative mb-4">
+                <img
+                  src={`/images/${model?.category_name}/${model?.name}/${model?.name}_${activeSlide.slide_number}.webp`}
+                  alt="Взрыв-схема"
+                  className="w-full object-contain max-h-[60vh]"
+                />
+                {/* интерактивные блоки — вставим позже */}
+              </div>
+            )}
+
+            {/* Превью слайдов — горизонтальный скролл */}
+            <div className="flex space-x-2 overflow-x-auto pb-2">
+              {slides.map((slide, index) => (
+                <img
+                  key={slide.slide_number}
+                  src={`/images/${model?.category_name}/${model?.name}/${model?.name}_${slide.slide_number}.webp`}
+                  alt={`Слайд ${slide.slide_number}`}
+                  className={`w-20 h-20 object-contain border-2 rounded cursor-pointer ${
+                    index === activeSlideIndex
+                      ? "border-blue-500"
+                      : "border-gray-300"
+                  }`}
+                  onClick={() => setActiveSlideIndex(index)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Таблица деталей */}
       <div className="w-full pl-4">

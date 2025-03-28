@@ -78,13 +78,15 @@ export default function CategoryGrid() {
   );
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center px-4">
       {models ? (
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 w-full max-w-screen-lg">
           {models.map((model) => (
             <Link key={model.id} to={`/model/${model.id}`}>
-              <div className="bg-white p-4 rounded-md shadow-md">
-                <p className="text-center font-semibold">{model.name}</p>
+              <div className="bg-white p-4 rounded-md shadow-md hover:shadow-lg transition flex flex-col items-center">
+                <p className="text-sm font-semibold text-center break-words line-clamp-2">
+                  {model.name}
+                </p>
               </div>
             </Link>
           ))}
@@ -95,8 +97,8 @@ export default function CategoryGrid() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="bg-white p-4 rounded-md shadow-md hover:bg-gray-100">
-                <p className="text-center font-semibold text-blue-600 underline">
+              <div className="bg-white p-4 rounded-md shadow-md hover:bg-gray-100 flex flex-col items-center">
+                <p className="text-sm font-semibold text-blue-600 underline text-center break-words line-clamp-2">
                   {model.name}
                 </p>
               </div>
@@ -104,16 +106,19 @@ export default function CategoryGrid() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-4 gap-6 flex-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 w-full max-w-screen-lg">
           {categories.map((category) => (
             <Link key={category.id} to={`/categories/${category.id}`}>
-              <div className="bg-white p-4 rounded-md shadow-md cursor-pointer hover:bg-gray-100">
+              <div className="bg-white p-4 rounded-md shadow-md hover:shadow-lg transition flex flex-col items-center">
                 <img
                   src={category.img}
                   alt={category.name}
-                  className="w-full h-32 object-contain mb-2"
+                  loading="lazy"
+                  className="h-24 sm:h-28 lg:h-32 object-contain mb-2"
                 />
-                <p className="text-center font-semibold">{category.name}</p>
+                <p className="text-sm font-semibold text-center break-words line-clamp-2">
+                  {category.name}
+                </p>
               </div>
             </Link>
           ))}
