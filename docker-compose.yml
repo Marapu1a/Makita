@@ -38,5 +38,23 @@ services:
     depends_on:
       - db
 
+  frontend:
+    build: ./frontend
+    container_name: my_frontend
+    ports:
+      - "8080:80"
+    volumes:
+      - /var/www/images:/var/www/images:ro
+    depends_on:
+      - backend
+
+  admin-frontend:
+    build: ./admin-frontend
+    container_name: my_admin_frontend
+    ports:
+      - "8081:80"
+    depends_on:
+      - admin-backend
+
 volumes:
   postgres_data:
