@@ -56,5 +56,20 @@ services:
     depends_on:
       - admin-backend
 
+  backup:
+    image: postgres:15
+    container_name: db_backup
+    restart: unless-stopped
+    depends_on:
+      - db
+    entrypoint: /bin/sh
+    command: -c "while true; do pg_dump -U $$DB_USER -h db $$DB_NAME > /backups/makita_\$$(date +%Y-%m-%d).sql; sleep 86400; done"
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    volumes:
+      - ./database/backups:/backups
+
 volumes:
   postgres_data:
