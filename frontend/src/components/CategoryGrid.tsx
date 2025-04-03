@@ -78,7 +78,7 @@ export default function CategoryGrid() {
   );
 
   return (
-    <div className="flex flex-col items-center px-4">
+    <div className="flex flex-1 flex-col items-center px-4">
       {models ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 w-full max-w-screen-lg">
           {models.map((model) => (

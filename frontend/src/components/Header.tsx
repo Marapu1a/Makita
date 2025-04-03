@@ -9,7 +9,7 @@ const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="w-full border-b shadow-md z-10">
+    <header className="border-b shadow-lg z-10">
       <div
         className="relative px-4 py-4 bg-cyan-800 text-white min-h-[100px]"
         style={{
@@ -20,9 +20,9 @@ const Header = () => {
       >
         <div className="absolute inset-0 bg-black/30" />
 
-        <div className="relative z-10 w-full flex flex-col md:flex-row md:items-center md:justify-between">
+        <div className="relative z-10 w-full flex flex-col lg:flex-row lg:items-center lg:justify-between">
           {/* Левая часть: лого + меню */}
-          <div className="flex items-center justify-between md:justify-start md:space-x-6 w-full md:w-auto">
+          <div className="flex items-center justify-between lg:justify-start lg:space-x-6 w-full lg:w-auto">
             {/* Лого */}
             <Link to="/" className="flex items-center">
               <img
@@ -34,10 +34,10 @@ const Header = () => {
 
             {/* Бургер-кнопка (мобилка) */}
             <button
-              className="md:hidden text-white"
+              className="lg:hidden text-white"
               onClick={() => setMenuOpen((prev) => !prev)}
             >
-              <Menu size={24} />
+              <Menu className="w-8 h-8 text-white drop-shadow-sm" size={24} />
             </button>
           </div>
 
@@ -45,9 +45,9 @@ const Header = () => {
           <nav
             className={`${
               menuOpen ? "flex" : "hidden"
-            } flex-col md:flex md:flex-row md:items-center md:space-x-4
-     text-base text-white text-center mt-2 md:mt-0
-     md:bg-transparent bg-cyan-900/90 p-4 md:p-0 rounded-md shadow-md md:shadow-none`}
+            } flex-col lg:flex lg:flex-row lg:items-center lg:space-x-4
+     text-base text-white text-center mt-2 lg:mt-0
+     lg:bg-transparent bg-cyan-900/90 p-4 lg:p-0 rounded-lg shadow-lg lg:shadow-none`}
           >
             {[
               { to: "/info", label: "Информация" },
@@ -57,7 +57,7 @@ const Header = () => {
               <Link
                 key={to}
                 to={to}
-                className="py-2 px-4 hover:bg-cyan-700 rounded-md transition-all duration-100"
+                className="py-2 px-4 hover:bg-cyan-700 rounded-lg transition-all duration-100"
                 onClick={() => setMenuOpen(false)}
               >
                 {label}
@@ -68,7 +68,7 @@ const Header = () => {
               href="https://makita-snab.ru/"
               target="_blank"
               rel="noopener noreferrer"
-              className="group py-2 px-4 hover:bg-cyan-700 rounded-md transition-all duration-100"
+              className="group py-2 px-4 hover:bg-cyan-700 rounded-lg transition-all duration-100"
               onClick={() => setMenuOpen(false)}
             >
               <span className="group-hover:hidden">Инструменты</span>
@@ -77,7 +77,7 @@ const Header = () => {
           </nav>
 
           {/* Корзина (всегда справа) */}
-          <div className="mt-2 md:mt-0 md:ml-auto">
+          <div className="mt-2 lg:mt-0 lg:ml-auto">
             <Link
               to="/cart"
               className="flex items-center space-x-2 border border-white bg-black/20 px-3 py-2 rounded hover:bg-black/30 transition"

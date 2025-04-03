@@ -27,7 +27,7 @@ export default function Catalog() {
   if (loading) return <p className="text-center py-6">Загрузка...</p>;
 
   return (
-    <div className="container mx-auto flex gap-6 py-6">
+    <div className="flex gap-6 py-6">
       <CategoryGrid />
     </div>
   );

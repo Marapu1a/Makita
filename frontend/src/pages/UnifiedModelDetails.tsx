@@ -23,10 +23,10 @@ type Part = {
   price: number;
   availability: boolean;
   slide_id: number | null;
-  x_coord?: number;
-  y_coord?: number;
-  width?: number;
-  height?: number;
+  x_coord: number;
+  y_coord: number;
+  width: number;
+  height: number;
 };
 
 type Model = {
@@ -213,20 +213,22 @@ const UnifiedModelDetails = () => {
     });
   }, [svgContent, slides, activeSlideIndex, parts]);
 
+  const imageWidth = activeSlide?.image_width || 1; // на случай деления на 0
+  const imageHeight = activeSlide?.image_height || 1;
+
   if (isLoading) return <div>Загрузка...</div>;
 
   return (
     <div
-      className="container mx-auto py-6 flex"
+      className="py-6 flex"
       onMouseMove={handleMouseMove} // ✅ Глобальный слушатель для движения мыши
     >
       {/* Основной блок со схемой и SVG */}
-      <div className="relative flex-col items-center w-full hidden md:flex">
+      <div className="relative flex-col items-center md:w-[50%] hidden md:flex">
         <div
           className="relative"
           style={{
-            width: activeSlide?.image_width || "auto",
-            height: activeSlide?.image_height || "auto",
+            aspectRatio: `${activeSlide?.image_width}/${activeSlide?.image_height}`,
           }}
         >
           {activeSlide && (
@@ -253,10 +255,10 @@ const UnifiedModelDetails = () => {
                   id={`part-${part.id}`}
                   className="absolute bg-red-500 bg-opacity-0 cursor-pointer"
                   style={{
-                    left: `${part.x_coord}px`,
-                    top: `${part.y_coord}px`,
-                    width: `${part.width}px`,
-                    height: `${part.height}px`,
+                    left: `${(part.x_coord / imageWidth) * 100}%`,
+                    top: `${(part.y_coord / imageHeight) * 100}%`,
+                    width: `${(part.width / imageWidth) * 100}%`,
+                    height: `${(part.height / imageHeight) * 100}%`,
                     zIndex: Math.max(
                       1,
                       1000 - (part.width || 0) * (part.height || 0)
@@ -298,7 +300,7 @@ const UnifiedModelDetails = () => {
       </div>
 
       {/* Превью слайдов - вертикальный список */}
-      <div className="flex-col items-center w-20 ml-4 space-y-2 overflow-y-auto hidden md:flex">
+      <div className="flex-col items-center min-w-[5%] ml-4 space-y-2 hidden md:flex">
         {slides.map((slide, index) => (
           <img
             key={slide.slide_number}
@@ -367,12 +369,12 @@ const UnifiedModelDetails = () => {
       )}
 
       {/* Таблица деталей */}
-      <div className="w-full pl-4">
+      <div className="md:w-[42%] w-full md:pl-4">
         <PartsTable
           parts={parts}
           hoveredPart={hoveredPart}
           setShowTooltip={setShowTooltip}
-          onPartHover={setHoveredPart}
+          onPartHover={(part) => setHoveredPart(part)}
           isSvg={isSVG}
           svgRef={svgContainerRef}
           modelName={model ? model.name : "Неизвестная модель"}

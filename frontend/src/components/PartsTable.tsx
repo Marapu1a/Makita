@@ -7,8 +7,12 @@ type Part = {
   name: string | null;
   part_number: string;
   price: number;
-  slide_id: number | null;
   availability: boolean;
+  slide_id: number | null;
+  x_coord: number;
+  y_coord: number;
+  width: number;
+  height: number;
 };
 
 type PartsTableProps = {
@@ -98,18 +102,18 @@ const PartsTable: React.FC<PartsTableProps> = ({
       )}
       <div className="max-h-screen overflow-y-auto border rounded">
         <h2 className="text-xl font-semibold mb-2">Модель {modelName}</h2>
-        <table className="min-w-full text-sm text-left border-collapse">
+        <table className="text-sm text-left border-collapse">
           <thead>
             <tr className="bg-gray-200">
               <th className="border px-2 py-1">#</th>
-              <th className="border px-2 py-1">Артикул</th>
+              <th className="border px-3 py-1">Артикул</th>
               <th className="border px-2 py-1">Название</th>
               <th className="border px-2 py-1 text-center">Цена</th>
               <th className="border px-2 py-1 text-center">Есть</th>
             </tr>
           </thead>
           <tbody>
-            {parts.map((part, index) => (
+            {parts.map((part) => (
               <tr
                 key={part.id}
                 className="hover:bg-gray-100 cursor-pointer odd:bg-gray-50"

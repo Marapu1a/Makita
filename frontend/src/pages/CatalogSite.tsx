@@ -31,29 +31,29 @@ export default function CatalogSite() {
       {/* Header внутри App.tsx */}
 
       {/* 🧠 Top Bar */}
-      <div className="bg-cyan-800 text-white flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-0">
+      <div className="bg-cyan-800 text-white flex flex-col md:flex-row md:items-center gap-4 md:gap-0">
         {/* Поиск */}
         <div className="flex-1">
           <SearchBar />
         </div>
 
         {/* Назад */}
-        <div className="sm:ml-auto">
+        <div className="md:ml-auto">
           <BackButton rootPath="/" />
         </div>
 
         {/* Разделитель */}
-        <div className="hidden sm:block h-6 w-px bg-white opacity-50" />
+        <div className="hidden md:block h-6 w-px bg-white opacity-50" />
 
         {/* Контакты */}
         <div className="p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 text-sm">
+          <div className="flex flex-col md:flex-row md:items-center md:space-x-4 text-sm">
             <div className="flex items-center space-x-1">
               <Mail size={16} />
               <span>makita-snab@mail.ru</span>
             </div>
 
-            <div className="hidden sm:block h-6 w-px bg-white opacity-50" />
+            <div className="hidden md:block h-6 w-px bg-white opacity-50" />
 
             <div className="flex items-center space-x-1">
               <Phone size={16} />
@@ -64,11 +64,11 @@ export default function CatalogSite() {
       </div>
 
       {/* 🧱 Контент + сайдбар */}
-      <div className="flex flex-col lg:flex-row flex-1">
+      <div className="flex">
         {/* Sidebar */}
-        <aside className="hidden lg:block lg:w-64 bg-gradient-to-b from-cyan-700 to-cyan-800 text-white p-4 overflow-y-auto">
+        <aside className="md:max-w-[23%] lg:max-w-[18%] bg-gradient-to-b from-cyan-700 to-cyan-800 text-white p-4 hidden md:block">
           <h2 className="font-bold mb-2 text-lg">Категории</h2>
-          <ul>
+          <ul className="w-full">
             {categories.map((category) => (
               <li
                 key={category.id}
@@ -90,13 +90,13 @@ export default function CatalogSite() {
         </aside>
 
         {/* Основной контент */}
-        <main className="p-4 w-full overflow-x-auto max-w-full">
+        <main className="p-4 flex-1">
           <Outlet />
         </main>
       </div>
 
       {/* ⚓ Footer */}
-      <footer className="bg-gray-800 text-white p-4 text-sm text-center max-w-screen-sm mx-auto">
+      <footer className="bg-gray-800 text-white p-4 text-sm text-center w-full">
         <p className="underline">
           <Link to="/privacy-policy">Политика конфиденциальности</Link>
         </p>
