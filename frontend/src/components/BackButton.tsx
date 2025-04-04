@@ -21,7 +21,7 @@ export default function BackButton({ className, rootPath }: BackButtonProps) {
       onClick={() => !isAtRoot && navigate("/")}
       disabled={isAtRoot}
     >
-      Назад
+      Назад к каталогу
     </button>
   );
 }

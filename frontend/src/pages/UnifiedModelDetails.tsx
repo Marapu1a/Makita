@@ -219,88 +219,9 @@ const UnifiedModelDetails = () => {
   if (isLoading) return <div>Загрузка...</div>;
 
   return (
-    <div
-      className="py-6 flex"
-      onMouseMove={handleMouseMove} // ✅ Глобальный слушатель для движения мыши
-    >
-      {/* Основной блок со схемой и SVG */}
-      <div className="relative flex-col items-center md:w-[50%] hidden md:flex">
-        <div
-          className="relative"
-          style={{
-            aspectRatio: `${activeSlide?.image_width}/${activeSlide?.image_height}`,
-          }}
-        >
-          {activeSlide && (
-            <img
-              key={activeSlide.slide_number}
-              src={`/images/${model?.category_name}/${model?.name}/${model?.name}_${activeSlide.slide_number}.webp`}
-              alt="Взрыв-схема"
-              className="w-full h-full object-contain mb-4"
-            />
-          )}
-
-          {isSVG && (
-            <div
-              ref={svgContainerRef}
-              className="absolute top-0 left-0 w-full h-full pointer-events-auto"
-            />
-          )}
-
-          {!isSVG && (
-            <div className="absolute top-0 left-0 w-full h-full">
-              {filteredParts.map((part) => (
-                <div
-                  key={part.id}
-                  id={`part-${part.id}`}
-                  className="absolute bg-red-500 bg-opacity-0 cursor-pointer"
-                  style={{
-                    left: `${(part.x_coord / imageWidth) * 100}%`,
-                    top: `${(part.y_coord / imageHeight) * 100}%`,
-                    width: `${(part.width / imageWidth) * 100}%`,
-                    height: `${(part.height / imageHeight) * 100}%`,
-                    zIndex: Math.max(
-                      1,
-                      1000 - (part.width || 0) * (part.height || 0)
-                    ),
-                    minWidth:
-                      part.width && part.width < 10 ? "12px" : undefined,
-                    minHeight:
-                      part.height && part.height < 10 ? "12px" : undefined,
-                  }}
-                  onMouseEnter={() => handleMouseEnter(part)}
-                  onMouseLeave={handleMouseLeave}
-                />
-              ))}
-            </div>
-          )}
-
-          {showTooltip && hoveredPart && (
-            <div
-              ref={tooltipRef}
-              className="fixed bg-black text-white p-2 rounded text-sm pointer-events-none z-[9999]"
-            >
-              <p>
-                <strong>Номер на схеме:</strong> {hoveredPart.number}
-              </p>
-              <p>
-                <strong>Артикул:</strong> {hoveredPart.part_number}
-              </p>
-              {hoveredPart.name && (
-                <p>
-                  <strong>Название:</strong> {hoveredPart.name}
-                </p>
-              )}
-              <p>
-                <strong>Цена:</strong> {hoveredPart.price} руб.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
+    <>
       {/* Превью слайдов - вертикальный список */}
-      <div className="flex-col items-center min-w-[5%] ml-4 space-y-2 hidden md:flex">
+      <div className="flex-row items-center hidden md:flex">
         {slides.map((slide, index) => (
           <img
             key={slide.slide_number}
@@ -314,73 +235,154 @@ const UnifiedModelDetails = () => {
         ))}
       </div>
 
-      {isMobile && (
-        <button
-          onClick={() => setShowModal(true)}
-          className="fixed bottom-4 right-4 z-50 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg md:hidden"
-        >
-          Показать схему
-        </button>
-      )}
-
-      {isMobile && showModal && (
-        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <div className="flex justify-between items-center p-4 border-b">
-            <h3 className="text-lg font-semibold">Схема</h3>
-            <button
-              onClick={() => setShowModal(false)}
-              className="text-gray-600 hover:text-black text-xl"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="p-4">
-            {/* Слайд */}
+      <div
+        className="py-6 flex"
+        onMouseMove={handleMouseMove} // ✅ Глобальный слушатель для движения мыши
+      >
+        {/* Основной блок со схемой и SVG */}
+        <div className="w-[60%] relative flex-col items-center hidden md:flex">
+          <div
+            className="relative"
+            style={{
+              aspectRatio: `${activeSlide?.image_width}/${activeSlide?.image_height}`,
+            }}
+          >
             {activeSlide && (
-              <div className="relative mb-4">
-                <img
-                  src={`/images/${model?.category_name}/${model?.name}/${model?.name}_${activeSlide.slide_number}.webp`}
-                  alt="Взрыв-схема"
-                  className="w-full object-contain max-h-[60vh]"
-                />
-                {/* интерактивные блоки — вставим позже */}
+              <img
+                key={activeSlide.slide_number}
+                src={`/images/${model?.category_name}/${model?.name}/${model?.name}_${activeSlide.slide_number}.webp`}
+                alt="Взрыв-схема"
+                className="w-full h-full object-contain mb-4"
+              />
+            )}
+
+            {isSVG && (
+              <div
+                ref={svgContainerRef}
+                className="absolute top-0 left-0 w-full h-full pointer-events-auto"
+              />
+            )}
+
+            {!isSVG && (
+              <div className="absolute top-0 left-0 w-full h-full">
+                {filteredParts.map((part) => (
+                  <div
+                    key={part.id}
+                    id={`part-${part.id}`}
+                    className="absolute bg-red-500 bg-opacity-0 cursor-pointer"
+                    style={{
+                      left: `${(part.x_coord / imageWidth) * 100}%`,
+                      top: `${(part.y_coord / imageHeight) * 100}%`,
+                      width: `${(part.width / imageWidth) * 100}%`,
+                      height: `${(part.height / imageHeight) * 100}%`,
+                      zIndex: Math.max(
+                        1,
+                        1000 - (part.width || 0) * (part.height || 0)
+                      ),
+                      minWidth:
+                        part.width && part.width < 10 ? "12px" : undefined,
+                      minHeight:
+                        part.height && part.height < 10 ? "12px" : undefined,
+                    }}
+                    onMouseEnter={() => handleMouseEnter(part)}
+                    onMouseLeave={handleMouseLeave}
+                  />
+                ))}
               </div>
             )}
 
-            {/* Превью слайдов — горизонтальный скролл */}
-            <div className="flex space-x-2 overflow-x-auto pb-2">
-              {slides.map((slide, index) => (
-                <img
-                  key={slide.slide_number}
-                  src={`/images/${model?.category_name}/${model?.name}/${model?.name}_${slide.slide_number}.webp`}
-                  alt={`Слайд ${slide.slide_number}`}
-                  className={`w-20 h-20 object-contain border-2 rounded cursor-pointer ${
-                    index === activeSlideIndex
-                      ? "border-blue-500"
-                      : "border-gray-300"
-                  }`}
-                  onClick={() => setActiveSlideIndex(index)}
-                />
-              ))}
-            </div>
+            {showTooltip && hoveredPart && (
+              <div
+                ref={tooltipRef}
+                className="fixed bg-black text-white p-2 rounded text-sm pointer-events-none z-[9999]"
+              >
+                <p>
+                  <strong>Номер на схеме:</strong> {hoveredPart.number}
+                </p>
+                <p>
+                  <strong>Артикул:</strong> {hoveredPart.part_number}
+                </p>
+                {hoveredPart.name && (
+                  <p>
+                    <strong>Название:</strong> {hoveredPart.name}
+                  </p>
+                )}
+                <p>
+                  <strong>Цена:</strong> {hoveredPart.price} руб.
+                </p>
+              </div>
+            )}
           </div>
         </div>
-      )}
 
-      {/* Таблица деталей */}
-      <div className="md:w-[42%] w-full md:pl-4">
-        <PartsTable
-          parts={parts}
-          hoveredPart={hoveredPart}
-          setShowTooltip={setShowTooltip}
-          onPartHover={(part) => setHoveredPart(part)}
-          isSvg={isSVG}
-          svgRef={svgContainerRef}
-          modelName={model ? model.name : "Неизвестная модель"}
-        />
+        {isMobile && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="fixed bottom-4 right-4 z-50 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg md:hidden"
+          >
+            Показать схему
+          </button>
+        )}
+
+        {isMobile && showModal && (
+          <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-semibold">Схема {model?.name}</h3>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-600 hover:text-black text-xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4">
+              {/* Слайд */}
+              {activeSlide && (
+                <div className="relative mb-4">
+                  <img
+                    src={`/images/${model?.category_name}/${model?.name}/${model?.name}_${activeSlide.slide_number}.webp`}
+                    alt="Взрыв-схема"
+                    className="w-full object-contain max-h-[60vh]"
+                  />
+                  {/* интерактивные блоки — вставим позже */}
+                </div>
+              )}
+
+              {/* Превью слайдов — горизонтальный скролл */}
+              <div className="flex space-x-2 overflow-x-auto pb-2">
+                {slides.map((slide, index) => (
+                  <img
+                    key={slide.slide_number}
+                    src={`/images/${model?.category_name}/${model?.name}/${model?.name}_${slide.slide_number}.webp`}
+                    alt={`Слайд ${slide.slide_number}`}
+                    className={`w-20 h-20 object-contain border-2 rounded cursor-pointer ${
+                      index === activeSlideIndex
+                        ? "border-blue-500"
+                        : "border-gray-300"
+                    }`}
+                    onClick={() => setActiveSlideIndex(index)}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Таблица деталей */}
+        <div className="flex-1 md:pl-4">
+          <PartsTable
+            parts={parts}
+            hoveredPart={hoveredPart}
+            setShowTooltip={setShowTooltip}
+            onPartHover={(part) => setHoveredPart(part)}
+            isSvg={isSVG}
+            svgRef={svgContainerRef}
+            modelName={model ? model.name : "Неизвестная модель"}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

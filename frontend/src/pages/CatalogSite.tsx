@@ -66,7 +66,7 @@ export default function CatalogSite() {
       {/* 🧱 Контент + сайдбар */}
       <div className="flex">
         {/* Sidebar */}
-        <aside className="md:max-w-[23%] lg:max-w-[18%] bg-gradient-to-b from-cyan-700 to-cyan-800 text-white p-4 hidden md:block">
+        <aside className="md:max-w-[23%] lg:max-w-[18%] bg-gradient-to-b from-cyan-700 to-cyan-800 text-white p-4 hidden lg:block">
           <h2 className="font-bold mb-2 text-lg">Категории</h2>
           <ul className="w-full">
             {categories.map((category) => (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 import CartModal from "./CartModal";
 
 type Part = {
@@ -116,7 +117,7 @@ const PartsTable: React.FC<PartsTableProps> = ({
             {parts.map((part) => (
               <tr
                 key={part.id}
-                className="hover:bg-gray-100 cursor-pointer odd:bg-gray-50"
+                className="hover:bg-yellow-100 cursor-pointer odd:bg-gray-50"
                 onMouseEnter={() => {
                   onPartHover(part);
                   setShowTooltip(false);
@@ -134,13 +135,13 @@ const PartsTable: React.FC<PartsTableProps> = ({
                   <button
                     className={`px-2 py-1 rounded text-white ${
                       part.availability
-                        ? "bg-red-600 hover:bg-red-700"
+                        ? "bg-green-600 hover:bg-green-700"
                         : "bg-gray-400 cursor-not-allowed"
                     }`}
                     onClick={() => part.availability && setSelectedPart(part)}
                     disabled={!part.availability}
                   >
-                    Добавить
+                    <Plus size={18} />
                   </button>
                 </td>
               </tr>
