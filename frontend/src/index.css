@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@media print {
+
+    /* Скрываем хедер, футер, меню и ненужные элементы */
+    header,
+    footer,
+    nav,
+    .print-hidden {
+        display: none !important;
+    }
+
+    /* Страница с текстом должна печататься на первой странице */
+    .print-page-1 {
+        page-break-after: always;
+    }
+
+    /* Карта отдельно на второй странице */
+    .print-page-2 {
+        page-break-before: always;
+    }
+}
+
+.cart-button {
+    position: relative;
+    display: flex;
+    margin-left: auto;
+    align-items: center;
+    gap: 8px;
+    border: 2px solid white;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.3s, color 0.3s;
+}
+
+.cart-button:hover {
+    border-color: rgb(207, 62, 62);
+    color: rgb(207, 62, 62);
+}
+
+/* Блик */
+.cart-glow {
+    position: absolute;
+    top: -50%;
+    left: -100%;
+    width: 150%;
+    height: 200%;
+    background: linear-gradient(120deg,
+            transparent 30%,
+            rgba(255, 255, 255, 0.8) 50%,
+            transparent 70%);
+    transform: rotate(15deg);
+    animation: swipe-glow 10s linear infinite;
+}
+
+/* Анимация движения блика */
+@keyframes swipe-glow {
+    0% {
+        left: -100%;
+    }
+
+    10% {
+        left: 100%;
+    }
+
+    100% {
+        left: 100%;
+        /* Задержка на месте */
+    }
+}

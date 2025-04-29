@@ -1,0 +1,75 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15
+    container_name: my_postgres
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: my_backend_container
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+
+  admin-backend:
+    build: ./admin-backend
+    container_name: my_admin_backend
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "5001:5001"
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    container_name: my_frontend
+    ports:
+      - "8080:80"
+    volumes:
+      - /var/www/images:/var/www/images:ro
+    depends_on:
+      - backend
+
+  admin-frontend:
+    build: ./admin-frontend
+    container_name: my_admin_frontend
+    ports:
+      - "8081:80"
+    depends_on:
+      - admin-backend
+
+  backup:
+    image: postgres:15
+    container_name: db_backup
+    restart: unless-stopped
+    depends_on:
+      - db
+    entrypoint: /bin/sh
+    command: -c "while true; do pg_dump -U $$DB_USER -h db $$DB_NAME > /backups/makita_\$$(date +%Y-%m-%d).sql; sleep 86400; done"
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    volumes:
+      - ./database/backups:/backups
+
+volumes:
+  postgres_data:
