@@ -68,12 +68,15 @@ const Dashboard = () => {
         <button
           onClick={async () => {
             try {
-              const res = await fetch("http://localhost:5001/api/backup-db", {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
-              });
+              const res = await fetch(
+                `${import.meta.env.VITE_API_URL}/api/backup-db`,
+                {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                }
+              );
 
               const data = await res.json();
               alert(`✅ ${data.message}`);

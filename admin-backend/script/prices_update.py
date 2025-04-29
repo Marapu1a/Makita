@@ -7,7 +7,7 @@ conn = psycopg2.connect(
     dbname='makita',
     user='postgres',
     password='2831742dfcz',
-    host='localhost',
+    host='db', # localhost для локалки
     port=5432
 )
 cur = conn.cursor()

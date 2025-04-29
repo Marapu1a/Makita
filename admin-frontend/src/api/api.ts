@@ -115,7 +115,7 @@ export const uploadPriceFile = async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    await fetch('http://localhost:5001/api/upload-price', {
+    await fetch(`${API_URL}/api/upload-price`, {
         method: 'POST',
         body: formData,
         credentials: 'include',
@@ -124,12 +124,10 @@ export const uploadPriceFile = async (file: File) => {
 
 // Запуск обновления базы
 export const updatePrices = async () => {
-    await fetch('http://localhost:5001/api/update-prices', {
+    await fetch(`${API_URL}/api/update-prices`, {
         method: 'POST',
         credentials: 'include',
     });
 };
-
-
 
 export default api;

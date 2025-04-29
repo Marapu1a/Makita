@@ -35,7 +35,7 @@ router.post('/upload-price', upload.single('file'), (req, res) => {
 router.post('/update-prices', (req, res) => {
     const scriptPath = path.join(__dirname, '../script/prices_update.py');
 
-    exec(`python ${scriptPath}`, (error, stdout, stderr) => {
+    exec(`python3 ${scriptPath}`, (error, stdout, stderr) => {  // Локально нужно python без "3"
         if (error) {
             console.error(`Ошибка запуска скрипта: ${error.message}`);
             return res.status(500).json({ message: 'Ошибка запуска скрипта' });
