@@ -8,10 +8,11 @@
     "sequelize": "^6.37.5"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "nodemon": "^3.1.9"
   },
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon -r dotenv/config app.js"
+    "dev": "cross-env NODE_ENV=development nodemon app.js",
+    "start": "cross-env NODE_ENV=production node app.js"
   }
 }

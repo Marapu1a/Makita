@@ -1,0 +1,36 @@
+# Node.js
+**/node_modules/
+**/dist/
+**/build/
+**/.vite/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env files (всё вручную на сервер)
+**/.env
+**/.env.*
+
+# Database
+*.sqlite
+*.sql
+*.dump
+postgres_data/
+
+# Docker
+docker-compose.override.yml
+
+# Vite / frontend build output
+**/public/build/
+/frontend/public/
+
+# System
+.DS_Store
+Thumbs.db
+
+# IDE/editor configs
+.vscode/
+.idea/

@@ -6,7 +6,7 @@ services:
     container_name: my_postgres
     restart: always
     env_file:
-      - .env
+      - .env.production
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -21,7 +21,7 @@ services:
     container_name: my_backend_container
     restart: always
     env_file:
-      - .env
+      - .env.production
     ports:
       - "5000:5000"
     depends_on:
@@ -32,7 +32,7 @@ services:
     container_name: my_admin_backend
     restart: always
     env_file:
-      - .env
+      - .env.production
     ports:
       - "5001:5001"
     depends_on:
