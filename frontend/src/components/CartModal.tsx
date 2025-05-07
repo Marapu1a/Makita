@@ -24,7 +24,9 @@ const CartModal: React.FC<CartModalProps> = ({ part, onClose }) => {
       <div className="bg-white p-6 rounded shadow-lg w-80">
         <h2 className="text-lg font-semibold">{part.name || "Без названия"}</h2>
         <p className="text-sm text-gray-600">Артикул: {part.part_number}</p>
-        <p className="text-lg font-bold mt-2">{totalPrice} ₽</p>
+        <p className="text-lg font-bold mt-2">
+          {Math.ceil(totalPrice).toLocaleString("ru-RU")} ₽
+        </p>
 
         <div className="flex items-center mt-4 space-x-2">
           <button

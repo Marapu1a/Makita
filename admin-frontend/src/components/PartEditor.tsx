@@ -21,6 +21,7 @@ const PartEditor: React.FC<PartEditorProps> = ({ part, onClose }) => {
   const handleSave = async () => {
     try {
       await updatePart(editedPart.id, {
+        part_number: editedPart.part_number,
         name: editedPart.name,
         price: editedPart.price,
         availability: editedPart.availability,
@@ -54,6 +55,18 @@ const PartEditor: React.FC<PartEditorProps> = ({ part, onClose }) => {
           </>
         ) : (
           <div>
+            <label className="block mb-2">
+              Артикул:
+              <input
+                type="text"
+                className="w-full p-2 border rounded mt-1"
+                value={editedPart.part_number}
+                onChange={(e) =>
+                  setEditedPart({ ...editedPart, part_number: e.target.value })
+                }
+              />
+            </label>
+
             <label className="block mb-2">
               Название:
               <input

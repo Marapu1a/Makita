@@ -18,13 +18,14 @@ router.get("/admin/parts/model/:modelId", async (req, res) => {
 router.patch("/admin/parts/:id", async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, price, availability } = req.body;
+        const { part_number, name, price, availability } = req.body;
 
         const part = await Part.findByPk(id);
         if (!part) {
             return res.status(404).json({ success: false, error: "Деталь не найдена" });
         }
 
+        if (part_number !== undefined) part.part_number = part_number;
         if (name !== undefined) part.name = name;
         if (price !== undefined) part.price = price;
         if (availability !== undefined) part.availability = availability;

@@ -99,16 +99,16 @@ export default function SearchBar() {
           className="p-2 w-full bg-cyan-900 text-white border border-white rounded-sm focus:border-white transition-all duration-100 ease-in-out"
         />
         {Object.keys(suggestions).length > 0 && (
-          <ul className="absolute top-full left-0 w-full bg-cyan-800 border border-white shadow-lg max-h-60 overflow-auto rounded-sm">
+          <ul className="absolute top-full left-0 w-full bg-[#1e2a30] border border-cyan-700 shadow-xl max-h-60 overflow-auto rounded-md z-50">
             {Object.entries(suggestions).map(([categoryName, models]) => (
               <li key={categoryName}>
-                <div className="px-3 py-1 text-xs text-gray-300 uppercase bg-cyan-700">
+                <div className="px-3 py-1 text-xs text-cyan-400 uppercase bg-[#2b3b42] border-b border-cyan-700">
                   {categoryName}
                 </div>
                 {models.map((model) => (
                   <div
                     key={model.id}
-                    className="p-2 hover:bg-cyan-900 hover:text-white cursor-pointer transition-all duration-100 text-sm"
+                    className="p-2 hover:bg-gray-600 hover:text-white cursor-pointer transition-all duration-100 text-sm text-gray-200"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleSelectModel(model)}
                   >
