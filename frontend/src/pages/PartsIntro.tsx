@@ -2,7 +2,7 @@ import { useState } from "react";
 
 const PartsIntro: React.FC = () => {
   const certificates = Array.from(
-    { length: 7 },
+    { length: 8 },
     (_, i) => `/images/sertificates/${i + 1}.webp`
   );
   const [currentIndex, setCurrentIndex] = useState(0);

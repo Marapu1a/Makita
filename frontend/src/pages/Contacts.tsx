@@ -1,18 +1,45 @@
 import { Dialog, DialogPanel, Transition } from "@headlessui/react";
-import { Fragment, useState } from "react";
-import { Phone, Mail, Landmark, Printer, Expand } from "lucide-react";
+import { Fragment, useMemo, useState } from "react";
+import { Phone, Mail, Landmark, Printer, Expand, X } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import { LatLngExpression } from "leaflet";
+import type { LatLngExpression } from "leaflet";
+import L from "leaflet";
 
 import "leaflet/dist/leaflet.css";
 
 const OFFICE_COORDS: LatLngExpression = [55.8078, 37.7224];
+const OFFICE_PHOTO_SRC = "/images/office.webp"; // public/images/office.webp
 
 const Contacts = () => {
   const [isOpen, setIsOpen] = useState(false);
+
   const handlePrint = () => {
     window.print();
   };
+
+  // стабильный icon для Vite (без 404 в prod)
+  const markerIcon = useMemo(
+    () =>
+      L.icon({
+        iconRetinaUrl: new URL(
+          "leaflet/dist/images/marker-icon-2x.png",
+          import.meta.url
+        ).toString(),
+        iconUrl: new URL(
+          "leaflet/dist/images/marker-icon.png",
+          import.meta.url
+        ).toString(),
+        shadowUrl: new URL(
+          "leaflet/dist/images/marker-shadow.png",
+          import.meta.url
+        ).toString(),
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+      }),
+    []
+  );
 
   return (
     <div className="container mx-auto pt-6 px-4">
@@ -113,12 +140,11 @@ const Contacts = () => {
                 height: "300px",
                 width: "100%",
                 borderRadius: "8px",
-                zIndex: 10,
               }}
               attributionControl={false}
             >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              <Marker position={OFFICE_COORDS}>
+              <Marker position={OFFICE_COORDS} icon={markerIcon}>
                 <Popup>
                   Офис ООО "Снабтулс"
                   <br />
@@ -163,6 +189,68 @@ const Contacts = () => {
           </section>
         </div>
       </div>
+
+      {/* Modal with office photo */}
+      <Transition appear show={isOpen} as={Fragment}>
+        <Dialog
+          as="div"
+          className="relative z-[1000]"
+          onClose={() => setIsOpen(false)}
+        >
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-200"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-150"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black/60" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-200"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-150"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <DialogPanel className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white p-3 shadow-xl">
+                  <div className="flex items-center justify-end mb-2">
+                    <button
+                      onClick={() => setIsOpen(false)}
+                      className="inline-flex items-center gap-2 rounded-md bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 transition"
+                      aria-label="Закрыть"
+                    >
+                      <X size={18} />
+                      Закрыть
+                    </button>
+                  </div>
+
+                  <img
+                    src={OFFICE_PHOTO_SRC}
+                    alt="Фотография офиса"
+                    className="w-full h-auto rounded-xl"
+                    loading="lazy"
+                    onError={() => {
+                      // eslint-disable-next-line no-console
+                      console.error(
+                        "Office photo failed to load:",
+                        OFFICE_PHOTO_SRC
+                      );
+                    }}
+                  />
+                </DialogPanel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   );
 };
