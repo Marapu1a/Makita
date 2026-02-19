@@ -21,7 +21,7 @@ services:
     container_name: my_backend_container
     restart: always
     env_file:
-      - .env.production
+      - ./backend/.env.production
     ports:
       - "5000:5000"
     depends_on:
@@ -32,7 +32,7 @@ services:
     container_name: my_admin_backend
     restart: always
     env_file:
-      - .env.production
+      - ./admin-backend/.env.production
     ports:
       - "5001:5001"
     depends_on:
@@ -41,6 +41,7 @@ services:
   frontend:
     build: ./frontend
     container_name: my_frontend
+    restart: always
     ports:
       - "8080:80"
     volumes:
@@ -51,6 +52,7 @@ services:
   admin-frontend:
     build: ./admin-frontend
     container_name: my_admin_frontend
+    restart: always
     ports:
       - "8081:80"
     depends_on:
