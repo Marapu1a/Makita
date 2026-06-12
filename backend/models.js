@@ -130,15 +130,18 @@ Slide.belongsTo(Model, { foreignKey: 'model_id', as: 'model' });
 Slide.hasMany(Part, { foreignKey: 'slide_id', as: 'parts' });
 Part.belongsTo(Slide, { foreignKey: 'slide_id', as: 'slide' });
 
-// 🔃 Синхронизация
-const reset = process.argv.includes('--reset');
-sequelize.sync({ force: reset, alter: !reset })
-    .then(() => {
-        console.log(`🔥 Все таблицы ${reset ? "пересозданы" : "синхронизированы"}!`);
-    })
-    .catch(err => {
-        console.error("❌ Ошибка при создании таблиц:", err);
-    });
+// 🔃 Синхронизация — только в development
+// В production схема управляется вручную через SQL-миграции
+if (process.env.NODE_ENV !== 'production') {
+    const reset = process.argv.includes('--reset');
+    sequelize.sync({ force: reset, alter: !reset })
+        .then(() => {
+            console.log(`🔥 Все таблицы ${reset ? "пересозданы" : "синхронизированы"}!`);
+        })
+        .catch(err => {
+            console.error("❌ Ошибка при создании таблиц:", err);
+        });
+}
 
 module.exports = {
     Categories,

@@ -1,7 +1,11 @@
 const jwt = require("jsonwebtoken");
 
 module.exports = (req, res, next) => {
-    const token = req.headers.authorization?.split(" ")[1];
+    // Принимаем токен из Authorization header или из httpOnly cookie
+    const headerToken = req.headers.authorization?.split(" ")[1];
+    const cookieToken = req.cookies?.token;
+    const token = headerToken || cookieToken;
+
     if (!token) return res.status(401).json({ message: "Нет доступа" });
 
     try {
