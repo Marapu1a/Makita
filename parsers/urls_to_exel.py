@@ -1,13 +1,17 @@
 import psycopg2
 from openpyxl import Workbook
+import os
+from dotenv import load_dotenv
 
-# Настройки подключения
+load_dotenv()
+
+# Настройки подключения — credentials из переменных окружения
 conn = psycopg2.connect(
-    host="localhost",
-    port=5432,
-    dbname="makita",
-    user="postgres",
-    password="2831742dfcz"
+    host=os.environ.get("DB_HOST", "localhost"),
+    port=int(os.environ.get("DB_PORT", "5432")),
+    dbname=os.environ["DB_NAME"],
+    user=os.environ["DB_USER"],
+    password=os.environ["DB_PASSWORD"],
 )
 
 BASE_URL = "https://makita-remont.ru/model/"

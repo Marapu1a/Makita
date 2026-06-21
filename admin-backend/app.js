@@ -7,6 +7,7 @@ const sequelize = require('./db'); // Подключаем базу данных
 
 // Роуты
 const cookieParser = require("cookie-parser");
+const authMiddleware = require('./middleware/authMiddleware'); // Авторизация
 const modelRoutes = require('./routes/adminModelsRoutes'); // Модели
 const partRoutes = require('./routes/adminPartsRoutes'); // Детали
 const categoryRoutes = require('./routes/adminCategoriesRoutes'); // Категории
@@ -30,12 +31,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 // Роуты
-app.use('/api', authRoutes);
-app.use('/api', modelRoutes);
-app.use('/api', partRoutes);
-app.use('/api', categoryRoutes);
-app.use('/api', ordersRoutes);
-app.use('/api', adminPriceRoutes);
+app.use('/api', authRoutes);                            // публичный: /api/admin/login
+app.use('/api', authMiddleware, modelRoutes);           // защищённый
+app.use('/api', authMiddleware, partRoutes);            // защищённый
+app.use('/api', authMiddleware, categoryRoutes);        // защищённый
+app.use('/api', authMiddleware, ordersRoutes);          // защищённый
+app.use('/api', authMiddleware, adminPriceRoutes);      // защищённый
 
 // Точка проверки
 app.get('/', (req, res) => {

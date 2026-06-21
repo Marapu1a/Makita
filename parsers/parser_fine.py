@@ -7,13 +7,17 @@ import time
 import os
 import re
 import requests
+from dotenv import load_dotenv
 
-# Подключение к базе данных
+load_dotenv()
+
+# Подключение к базе данных — credentials из переменных окружения
 conn = psycopg2.connect(
-    dbname="makita",
-    user="postgres",
-    password="2831742dfcz",
-    host="localhost"
+    dbname=os.environ["DB_NAME"],
+    user=os.environ["DB_USER"],
+    password=os.environ["DB_PASSWORD"],
+    host=os.environ.get("DB_HOST", "localhost"),
+    port=os.environ.get("DB_PORT", "5432"),
 )
 cursor = conn.cursor()
 

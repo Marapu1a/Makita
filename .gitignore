@@ -13,6 +13,7 @@ yarn-error.log*
 # Env files (всё вручную на сервер)
 **/.env
 **/.env.*
+!**/.env.example
 
 # Database
 *.sqlite
@@ -34,3 +35,6 @@ Thumbs.db
 # IDE/editor configs
 .vscode/
 .idea/
+
+# Local notes, reports, logs (not for git)
+_notes/
