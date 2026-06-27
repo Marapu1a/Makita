@@ -1,13 +1,16 @@
+import os
 import pandas as pd
 import psycopg2
+from dotenv import load_dotenv
 
-# Настройки подключения к БД
+load_dotenv()
+
 conn = psycopg2.connect(
-    dbname='makita',
-    user='postgres',
-    password='2831742dfcz',
-    host='localhost',
-    port=5432
+    dbname=os.environ["DB_NAME"],
+    user=os.environ["DB_USER"],
+    password=os.environ["DB_PASSWORD"],
+    host=os.environ.get("DB_HOST", "localhost"),
+    port=os.environ.get("DB_PORT", "5432"),
 )
 cur = conn.cursor()
 
