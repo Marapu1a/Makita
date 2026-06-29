@@ -58,5 +58,35 @@ services:
     depends_on:
       - admin-backend
 
+  # ─── v2 stack ───────────────────────────────────────────────
+  backend-v2:
+    build: ./backend-v2
+    container_name: my_backend_v2
+    restart: always
+    env_file:
+      - ./backend-v2/.env.production
+    ports:
+      - "5002:5001"
+    volumes:
+      - /var/www/images:/var/www/images:ro
+    depends_on:
+      - db
+
+  frontend-v2:
+    build: ./frontend-v2
+    container_name: my_frontend_v2
+    restart: always
+    environment:
+      - API_URL=http://backend-v2:5001
+      - PUBLIC_API_URL=
+      - HOST=0.0.0.0
+      - PORT=4321
+    ports:
+      - "4321:4321"
+    volumes:
+      - /var/www/images:/var/www/images:ro
+    depends_on:
+      - backend-v2
+
 volumes:
   postgres_data:
