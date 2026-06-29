@@ -16,6 +16,7 @@ export interface ModelCard {
 
 export interface Part {
   id: number
+  slideId: number | null
   number: number
   partNumber: string
   name: string | null
@@ -36,7 +37,6 @@ export interface Slide {
   imageWidth: number | null
   imageHeight: number | null
   hasSvg: boolean
-  parts: Part[]
 }
 
 export interface ModelDetail {
@@ -51,4 +51,5 @@ export interface ModelDetail {
   isIndexable: boolean
   category: { id: number; name: string; slug: string | null }
   slides: Slide[]
+  parts: Part[]
 }

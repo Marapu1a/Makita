@@ -1,34 +1,78 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import type { ModelDetail, Part, Slide } from '../lib/types'
 
-interface Props {
-  model: ModelDetail
+interface Slide {
+  id: number
+  slideNumber: number
+  imagePath: string
+  imageWidth: number | null
+  imageHeight: number | null
+  hasSvg: boolean
 }
 
-function imgBase(categoryName: string, modelName: string) {
-  return `/images/${encodeURIComponent(categoryName)}/${modelName}`
+interface Part {
+  id: number
+  slideId: number | null
+  number: number
+  partNumber: string
+  name: string | null
+  price: number
+  availability: boolean
+  quantity: number
+  slug: string | null
+  xCoord: number | null
+  yCoord: number | null
+  width: number | null
+  height: number | null
+}
+
+interface ModelData {
+  name: string
+  category: { name: string }
+  slides: Slide[]
+  parts: Part[]
+}
+
+interface Props {
+  model: ModelData
 }
 
 export default function Diagram({ model }: Props) {
-  const [activeIdx, setActiveIdx] = useState(0)
-  const [svgMap, setSvgMap] = useState<Record<number, string | null>>({})
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0)
+  const [svgContent, setSvgContent] = useState<Record<number, string | null>>({})
   const [hoveredPart, setHoveredPart] = useState<Part | null>(null)
-  const [highlightedNumber, setHighlightedNumber] = useState<number | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [showModal, setShowModal] = useState(false)
 
   const svgContainerRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
 
-  const base = imgBase(model.category.name, model.name)
   const slides = model.slides
-  const activeSlide: Slide | undefined = slides[activeIdx]
+  const parts  = model.parts
+  const activeSlide = slides[activeSlideIndex]
+
+  const imgBase = `/images/${encodeURIComponent(model.category.name)}/${model.name}`
+
+  // Compute isSVG per slide — same as old: true if ANY part has null x_coord or y_coord
+  const isSVGMap = useMemo(() => {
+    const map: Record<number, boolean> = {}
+    slides.forEach((slide) => {
+      const slideParts = parts.filter((p) => p.slideId === slide.id)
+      map[slide.id] = slideParts.some((p) => p.xCoord === null || p.yCoord === null)
+    })
+    return map
+  }, [slides, parts])
+
+  const isSVG = isSVGMap[activeSlide?.id] ?? false
+
   const filteredParts = useMemo(
-    () => (activeSlide ? activeSlide.parts : []),
-    [activeSlide]
+    () => parts.filter((p) => p.slideId === activeSlide?.id),
+    [parts, activeSlide]
   )
 
-  // Detect mobile
+  const imageWidth  = activeSlide?.imageWidth  || 1
+  const imageHeight = activeSlide?.imageHeight || 1
+
+  // Mobile detection
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
     check()
@@ -36,28 +80,27 @@ export default function Diagram({ model }: Props) {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  // Load SVG overlay for SVG Type 1 slides
+  // Load SVG overlay for SVG-mode slides
   useEffect(() => {
-    if (!activeSlide?.hasSvg) return
-    if (svgMap[activeSlide.id] !== undefined) return
+    if (!activeSlide || !isSVG) return
+    if (svgContent[activeSlide.id] !== undefined) return
 
-    const svgPath = `${base}/${model.name}_${activeSlide.slideNumber}.svg`
-    fetch(svgPath)
+    const path = `${imgBase}/${model.name}_${activeSlide.slideNumber}.svg`
+    fetch(path)
       .then((r) => (r.ok ? r.text() : Promise.reject()))
-      .then((text) => setSvgMap((prev) => ({ ...prev, [activeSlide.id]: text })))
-      .catch(() => setSvgMap((prev) => ({ ...prev, [activeSlide.id]: null })))
-  }, [activeSlide, base, model.name, svgMap])
+      .then((text) => setSvgContent((prev) => ({ ...prev, [activeSlide.id]: text })))
+      .catch(() => setSvgContent((prev) => ({ ...prev, [activeSlide.id]: null })))
+  }, [activeSlideIndex, activeSlide, isSVG, imgBase, model.name, svgContent])
 
-  // Inject SVG + bind hover events
+  // Inject SVG + bind hover events (exactly as old code)
   useEffect(() => {
-    const slide = activeSlide
-    if (!slide?.hasSvg || !svgContainerRef.current) return
-    const svgText = svgMap[slide.id]
+    if (!activeSlide || !svgContainerRef.current) return
+    const svgText = svgContent[activeSlide.id]
     if (!svgText) return
 
     const parser = new DOMParser()
-    const doc = parser.parseFromString(svgText, 'image/svg+xml')
-    const svgEl = doc.querySelector('svg')
+    const svgDoc = parser.parseFromString(svgText, 'image/svg+xml')
+    const svgEl = svgDoc.querySelector('svg')
     if (!svgEl) return
 
     svgContainerRef.current.innerHTML = ''
@@ -65,97 +108,128 @@ export default function Diagram({ model }: Props) {
 
     const xlinkNS = 'http://www.w3.org/1999/xlink'
     svgEl.querySelectorAll<SVGUseElement>('use').forEach((useEl) => {
-      useEl.style.overflow = 'visible'
-      useEl.style.opacity = '1'
-      useEl.style.fill = 'rgba(0,0,0,0)'
-      useEl.setAttribute('pointer-events', 'all')
+      useEl.setAttribute('style', 'overflow: visible; opacity: 1; fill: rgba(0, 0, 0, 0)')
 
       const href = useEl.getAttributeNS(xlinkNS, 'href') || useEl.getAttribute('href') || ''
       const match = href.match(/#ref(\d+)/)
       if (!match) return
 
       const num = parseInt(match[1])
-      const part = filteredParts.find((p) => p.number === num)
+      const part = parts.find((p) => p.number === num)
       if (!part) return
 
-      useEl.addEventListener('mouseenter', () => {
-        setHoveredPart(part)
-        setHighlightedNumber(part.number)
-      })
-      useEl.addEventListener('mouseleave', () => {
-        setHoveredPart(null)
-        setHighlightedNumber(null)
-      })
+      useEl.setAttribute('pointer-events', 'all')
+      useEl.addEventListener('mouseenter', () => handleMouseEnter(part))
+      useEl.addEventListener('mouseleave', handleMouseLeave)
     })
-  }, [svgMap, activeSlide, filteredParts])
+  }, [svgContent, activeSlide])
 
-  // Highlight SVG element from table hover
+  // Highlight SVG or DIV when hoveredPart changes (via table hover or diagram hover)
   useEffect(() => {
-    if (!activeSlide?.hasSvg || !svgContainerRef.current) return
-    const xlinkNS = 'http://www.w3.org/1999/xlink'
-    svgContainerRef.current.querySelectorAll<SVGUseElement>('use').forEach((useEl) => {
-      const href = useEl.getAttributeNS(xlinkNS, 'href') || useEl.getAttribute('href') || ''
-      const match = href.match(/#ref(\d+)/)
-      if (!match) return
-      const num = parseInt(match[1])
-      useEl.style.fill = num === highlightedNumber ? 'rgba(59,130,246,0.35)' : 'rgba(0,0,0,0)'
-    })
-  }, [highlightedNumber, activeSlide])
+    if (!hoveredPart) {
+      // Clear all highlights
+      if (isSVG && svgContainerRef.current) {
+        svgContainerRef.current.querySelectorAll<SVGUseElement>('use').forEach((el) => {
+          el.setAttribute('style', 'overflow: visible; opacity: 1; fill: rgba(0, 0, 0, 0)')
+        })
+      } else {
+        parts.forEach((p) => {
+          const el = document.getElementById(`part-${p.id}`)
+          if (el) el.style.backgroundColor = 'rgba(0,0,0,0)'
+        })
+      }
+      return
+    }
 
-  // Tooltip follow mouse
+    const isMatch = (p: Part) => hoveredPart.partNumber === p.partNumber
+
+    if (isSVG && svgContainerRef.current) {
+      const xlinkNS = 'http://www.w3.org/1999/xlink'
+      const svgEl = svgContainerRef.current.querySelector('svg')
+      if (!svgEl) return
+      svgEl.querySelectorAll<SVGUseElement>('use').forEach((useEl) => {
+        const href = useEl.getAttributeNS(xlinkNS, 'href') || useEl.getAttribute('href') || ''
+        const match = href.match(/#ref(\d+)/)
+        if (!match) return
+        const num = parseInt(match[1])
+        const matched = parts.find((p) => isMatch(p) && p.number === num)
+        useEl.setAttribute(
+          'style',
+          `overflow: visible; opacity: 1; fill: ${
+            matched
+              ? matched.availability ? 'rgba(0,255,0,0.7)' : 'rgba(255,0,0,0.7)'
+              : 'rgba(0,0,0,0)'
+          }`
+        )
+      })
+    } else {
+      parts.forEach((p) => {
+        const el = document.getElementById(`part-${p.id}`)
+        if (!el) return
+        el.style.backgroundColor = isMatch(p)
+          ? p.availability ? 'rgba(0,255,0,0.7)' : 'rgba(255,0,0,0.7)'
+          : 'rgba(0,0,0,0)'
+      })
+    }
+  }, [hoveredPart, isSVG, parts])
+
+  const handleMouseEnter = (part: Part) => setHoveredPart(part)
+  const handleMouseLeave = () => setHoveredPart(null)
+
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!tooltipRef.current || !hoveredPart) return
-    let x = e.clientX + 12
-    let y = e.clientY - 44
+    let x = e.clientX + 10
+    let y = e.clientY - 40
     const w = tooltipRef.current.offsetWidth
-    if (x + w > window.innerWidth) x = e.clientX - w - 12
+    if (x + w > window.innerWidth) x = e.clientX - w - 10
     if (y < 0) y = e.clientY + 20
     tooltipRef.current.style.left = `${x}px`
     tooltipRef.current.style.top  = `${y}px`
   }
 
-  const iw = activeSlide?.imageWidth  || 1
-  const ih = activeSlide?.imageHeight || 1
-
-  const DiagramArea = ({ slide }: { slide: Slide }) => (
+  const DiagramImage = ({ slide }: { slide: Slide }) => (
     <div
       className="relative"
       style={{ aspectRatio: `${slide.imageWidth || 800}/${slide.imageHeight || 600}` }}
     >
       <img
-        src={`${base}/${slide.imagePath}`}
+        src={`${imgBase}/${slide.imagePath}`}
         alt={`Схема ${model.name} слайд ${slide.slideNumber}`}
         className="w-full h-full object-contain"
         loading="lazy"
       />
 
       {/* SVG Type 1 overlay */}
-      {slide.hasSvg && (
-        <div
-          ref={svgContainerRef}
-          className="absolute inset-0 w-full h-full"
-        />
+      {isSVGMap[slide.id] && (
+        <div ref={svgContainerRef} className="absolute inset-0 w-full h-full" />
       )}
 
       {/* DIV hotspots */}
-      {!slide.hasSvg && slide.parts.map((part) => (
-        <div
-          key={part.id}
-          className="absolute cursor-pointer"
-          style={{
-            left:   `${(part.xCoord! / iw) * 100}%`,
-            top:    `${(part.yCoord! / ih) * 100}%`,
-            width:  `${(part.width!  / iw) * 100}%`,
-            height: `${(part.height! / ih) * 100}%`,
-            background: part.number === highlightedNumber ? 'rgba(59,130,246,0.35)' : 'rgba(239,68,68,0)',
-            zIndex: Math.max(1, 1000 - (part.width || 0) * (part.height || 0)),
-            minWidth:  (part.width  && part.width  < 10) ? 12 : undefined,
-            minHeight: (part.height && part.height < 10) ? 12 : undefined,
-          }}
-          onMouseEnter={() => { setHoveredPart(part); setHighlightedNumber(part.number) }}
-          onMouseLeave={() => { setHoveredPart(null);  setHighlightedNumber(null) }}
-        />
-      ))}
+      {!isSVGMap[slide.id] && (
+        <div className="absolute inset-0 w-full h-full">
+          {parts
+            .filter((p) => p.slideId === slide.id)
+            .map((part) => (
+              <div
+                key={part.id}
+                id={`part-${part.id}`}
+                className="absolute bg-red-500 cursor-pointer"
+                style={{
+                  backgroundColor: 'rgba(0,0,0,0)',
+                  left:   `${((part.xCoord ?? 0) / imageWidth)  * 100}%`,
+                  top:    `${((part.yCoord ?? 0) / imageHeight) * 100}%`,
+                  width:  `${((part.width  ?? 0) / imageWidth)  * 100}%`,
+                  height: `${((part.height ?? 0) / imageHeight) * 100}%`,
+                  zIndex: Math.max(1, 1000 - (part.width ?? 0) * (part.height ?? 0)),
+                  minWidth:  (part.width  && part.width  < 10) ? '12px' : undefined,
+                  minHeight: (part.height && part.height < 10) ? '12px' : undefined,
+                }}
+                onMouseEnter={() => handleMouseEnter(part)}
+                onMouseLeave={handleMouseLeave}
+              />
+            ))}
+        </div>
+      )}
     </div>
   )
 
@@ -163,35 +237,31 @@ export default function Diagram({ model }: Props) {
     <div onMouseMove={handleMouseMove}>
       {/* Slide thumbnails */}
       {slides.length > 1 && (
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4 hidden md:flex">
           {slides.map((slide, i) => (
-            <button
+            <img
               key={slide.id}
-              onClick={() => setActiveIdx(i)}
-              className={`border-2 rounded overflow-hidden w-16 h-16 ${
-                i === activeIdx ? 'border-blue-500' : 'border-gray-300'
+              src={`${imgBase}/${slide.imagePath}`}
+              alt={`Слайд ${slide.slideNumber}`}
+              className={`cursor-pointer w-16 h-16 object-contain border-2 ${
+                i === activeSlideIndex ? 'border-blue-500' : 'border-gray-300'
               }`}
-            >
-              <img
-                src={`${base}/${slide.imagePath}`}
-                alt={`Слайд ${slide.slideNumber}`}
-                className="w-full h-full object-contain"
-                loading="lazy"
-              />
-            </button>
+              onClick={() => setActiveSlideIndex(i)}
+              loading="lazy"
+            />
           ))}
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row gap-6">
+      <div className="py-4 flex gap-4">
         {/* Diagram — desktop */}
         {!isMobile && activeSlide && (
-          <div className="md:w-3/5">
-            <DiagramArea slide={activeSlide} />
+          <div className="w-3/5">
+            <DiagramImage slide={activeSlide} />
           </div>
         )}
 
-        {/* Mobile: "View diagram" button */}
+        {/* Mobile: show diagram button */}
         {isMobile && (
           <button
             onClick={() => setShowModal(true)}
@@ -202,42 +272,42 @@ export default function Diagram({ model }: Props) {
         )}
 
         {/* Parts table */}
-        <div className="flex-1 overflow-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="bg-gray-100 text-left">
-                <th className="px-3 py-2 font-medium w-10">№</th>
-                <th className="px-3 py-2 font-medium">Артикул</th>
-                <th className="px-3 py-2 font-medium">Название</th>
-                <th className="px-3 py-2 font-medium text-right">Цена</th>
-                <th className="px-3 py-2 font-medium text-center">Наличие</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredParts.map((part) => (
-                <tr
-                  key={part.id}
-                  className={`border-t cursor-pointer transition-colors ${
-                    part.number === highlightedNumber
-                      ? 'bg-blue-50'
-                      : 'hover:bg-gray-50'
-                  }`}
-                  onMouseEnter={() => { setHoveredPart(part); setHighlightedNumber(part.number) }}
-                  onMouseLeave={() => { setHoveredPart(null);  setHighlightedNumber(null) }}
-                >
-                  <td className="px-3 py-2 text-gray-500">{part.number}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{part.partNumber}</td>
-                  <td className="px-3 py-2">{part.name || '—'}</td>
-                  <td className="px-3 py-2 text-right whitespace-nowrap">
-                    {part.price > 0 ? `${part.price.toLocaleString('ru')} ₽` : '—'}
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    <span className={`inline-block w-2 h-2 rounded-full ${part.availability ? 'bg-green-500' : 'bg-red-400'}`} />
-                  </td>
+        <div className="flex-1 overflow-auto max-h-screen">
+          <div className="overflow-x-auto border rounded">
+            <table className="table-auto border-collapse border text-sm">
+              <thead>
+                <tr className="bg-gray-200">
+                  <th className="border px-2 py-1">#</th>
+                  <th className="border px-3 py-1">Артикул</th>
+                  <th className="border px-2 py-1">Название</th>
+                  <th className="border px-2 py-1 text-center">Цена</th>
+                  <th className="border px-2 py-1 text-center">Есть</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {[...filteredParts]
+                  .sort((a, b) => a.number - b.number)
+                  .map((part) => (
+                    <tr
+                      key={part.id}
+                      className="hover:bg-yellow-100 cursor-pointer odd:bg-gray-50"
+                      onMouseEnter={() => handleMouseEnter(part)}
+                      onMouseLeave={handleMouseLeave}
+                    >
+                      <td className="border px-2 py-1 text-center">{part.number}</td>
+                      <td className="border px-2 py-1">{part.partNumber}</td>
+                      <td className="border px-2 py-1">{part.name || '—'}</td>
+                      <td className="border px-2 py-1 text-center">
+                        {part.price > 0 ? `${Math.ceil(part.price)} ₽` : '—'}
+                      </td>
+                      <td className="border px-2 py-1 text-center">
+                        {part.availability ? 'Да' : 'Нет'}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -249,17 +319,20 @@ export default function Diagram({ model }: Props) {
             <button onClick={() => setShowModal(false)} className="text-xl leading-none">✕</button>
           </div>
           <div className="p-4">
-            <DiagramArea slide={activeSlide} />
+            <DiagramImage slide={activeSlide} />
             {slides.length > 1 && (
               <div className="flex gap-2 overflow-x-auto mt-3 pb-1">
                 {slides.map((slide, i) => (
-                  <button
+                  <img
                     key={slide.id}
-                    onClick={() => setActiveIdx(i)}
-                    className={`border-2 rounded shrink-0 w-20 h-20 ${i === activeIdx ? 'border-blue-500' : 'border-gray-300'}`}
-                  >
-                    <img src={`${base}/${slide.imagePath}`} alt="" className="w-full h-full object-contain" />
-                  </button>
+                    src={`${imgBase}/${slide.imagePath}`}
+                    alt=""
+                    className={`border-2 rounded shrink-0 w-20 h-20 object-contain cursor-pointer ${
+                      i === activeSlideIndex ? 'border-blue-500' : 'border-gray-300'
+                    }`}
+                    onClick={() => { setActiveSlideIndex(i); }}
+                    loading="lazy"
+                  />
                 ))}
               </div>
             )}
@@ -267,16 +340,16 @@ export default function Diagram({ model }: Props) {
         </div>
       )}
 
-      {/* Floating tooltip */}
+      {/* Tooltip */}
       {hoveredPart && (
         <div
           ref={tooltipRef}
-          className="fixed pointer-events-none z-[9999] bg-gray-900 text-white text-xs rounded px-3 py-2 shadow-lg max-w-xs"
+          className="fixed pointer-events-none z-[9999] bg-black text-white text-xs rounded px-3 py-2 shadow-lg"
         >
-          <div className="font-semibold mb-1">Позиция {hoveredPart.number}</div>
-          <div>Артикул: <span className="font-mono">{hoveredPart.partNumber}</span></div>
-          {hoveredPart.name && <div>{hoveredPart.name}</div>}
-          {hoveredPart.price > 0 && <div>{hoveredPart.price.toLocaleString('ru')} ₽</div>}
+          <p><strong>Номер на схеме:</strong> {hoveredPart.number}</p>
+          <p><strong>Артикул:</strong> {hoveredPart.partNumber}</p>
+          {hoveredPart.name && <p><strong>Название:</strong> {hoveredPart.name}</p>}
+          <p><strong>Цена:</strong> {hoveredPart.price} руб.</p>
         </div>
       )}
     </div>
