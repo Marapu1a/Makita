@@ -1,0 +1,44 @@
+---
+import '../styles/global.css'
+
+interface Props {
+  title: string
+  description?: string
+  noindex?: boolean
+}
+
+const { title, description, noindex } = Astro.props
+---
+
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    {noindex && <meta name="robots" content="noindex,nofollow" />}
+    <link rel="icon" href="/favicon.ico" />
+  </head>
+  <body class="min-h-screen bg-gray-50 text-gray-900">
+    <header class="bg-white shadow-sm sticky top-0 z-40">
+      <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
+        <a href="/" class="text-xl font-bold text-blue-700 shrink-0">
+          Makita Запчасти
+        </a>
+        <nav class="text-sm text-gray-500">
+          <slot name="breadcrumbs" />
+        </nav>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+      <slot />
+    </main>
+
+    <footer class="mt-16 border-t border-gray-200 bg-white py-6 text-center text-sm text-gray-400">
+      © {new Date().getFullYear()} Makita Запчасти. Все права защищены.
+    </footer>
+  </body>
+</html>

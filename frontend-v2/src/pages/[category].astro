@@ -1,0 +1,41 @@
+---
+import Layout from '../layouts/Layout.astro'
+import { getCategory } from '../lib/api'
+
+const { category: categorySlug } = Astro.params
+
+let data, models
+try {
+  ({ data, models } = await getCategory(categorySlug!))
+} catch {
+  return Astro.redirect('/', 302)
+}
+
+const title = data.seoTitle || `${data.name} — запчасти Makita`
+const description = data.seoDescription || `Каталог запчастей Makita для ${data.name}. Взрыв-схемы и оригинальные детали.`
+---
+
+<Layout title={title} description={description}>
+  <Fragment slot="breadcrumbs">
+    <a href="/" class="hover:text-blue-600">Каталог</a>
+    <span class="mx-1">/</span>
+    <span class="text-gray-700">{data.name}</span>
+  </Fragment>
+
+  <h1 class="text-2xl font-bold mb-6">{data.name}</h1>
+
+  {models.length === 0 && (
+    <p class="text-gray-500">Модели не найдены.</p>
+  )}
+
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+    {models.map((model) => (
+      <a
+        href={`/${categorySlug}/${model.slug}`}
+        class="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-200 transition-all p-3 flex flex-col items-center text-center gap-2"
+      >
+        <span class="text-sm font-semibold">{model.name}</span>
+      </a>
+    ))}
+  </div>
+</Layout>

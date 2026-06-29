@@ -1,0 +1,42 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import Diagram from '../../components/Diagram'
+import { getModel } from '../../lib/api'
+
+const { model: modelSlug, category: categorySlug } = Astro.params
+
+let model
+try {
+  model = await getModel(modelSlug!)
+} catch {
+  return Astro.redirect(`/${categorySlug}`, 302)
+}
+
+const title = model.seoTitle || `${model.name} — взрыв-схема и запчасти Makita`
+const description = model.seoDescription || `Взрыв-схема ${model.name}. Оригинальные запчасти Makita с артикулами и ценами.`
+---
+
+<Layout
+  title={title}
+  description={description}
+  noindex={!model.isIndexable}
+>
+  <Fragment slot="breadcrumbs">
+    <a href="/" class="hover:text-blue-600">Каталог</a>
+    <span class="mx-1">/</span>
+    <a href={`/${categorySlug}`} class="hover:text-blue-600">{model.category.name}</a>
+    <span class="mx-1">/</span>
+    <span class="text-gray-700">{model.name}</span>
+  </Fragment>
+
+  <h1 class="text-xl font-bold mb-4">{model.h1 || model.name}</h1>
+
+  <Diagram
+    model={model}
+    client:load
+  />
+
+  {model.content && (
+    <div class="mt-10 prose max-w-none" set:html={model.content} />
+  )}
+</Layout>
