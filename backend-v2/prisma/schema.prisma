@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Текущая денормализованная схема БД (до нормализации).
+// parts содержит и данные детали, и её позицию на схеме.
+
+model Category {
+  id             Int       @id @default(autoincrement())
+  name           String    @unique @db.VarChar(255)
+  parentId       Int?      @map("parent_id")
+  createdAt      DateTime  @map("createdat") @db.Timestamptz
+  updatedAt      DateTime  @map("updatedat") @db.Timestamptz
+  slug           String?   @db.VarChar(255)
+  seoTitle       String?   @map("seo_title") @db.VarChar(500)
+  seoDescription String?   @map("seo_description") @db.Text
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  models   Model[]
+
+  @@map("categories")
+}
+
+model Model {
+  id             Int      @id @default(autoincrement())
+  name           String   @unique @db.VarChar(255)
+  imagePath      String   @map("image_path") @db.VarChar(255)
+  categoryId     Int      @map("category_id")
+  createdAt      DateTime @map("createdat") @db.Timestamptz
+  updatedAt      DateTime @map("updatedat") @db.Timestamptz
+  slug           String?  @db.VarChar(255)
+  seoTitle       String?  @map("seo_title") @db.VarChar(500)
+  seoDescription String?  @map("seo_description") @db.Text
+  h1             String?  @db.VarChar(500)
+  content        String?  @db.Text
+  isIndexable    Boolean  @default(true) @map("is_indexable")
+
+  category Category @relation(fields: [categoryId], references: [id])
+  slides   Slide[]
+  parts    Part[]
+
+  @@map("models")
+}
+
+model Slide {
+  id          Int      @id @default(autoincrement())
+  modelId     Int      @map("model_id")
+  slideNumber Int      @map("slide_number")
+  imagePath   String   @map("image_path") @db.VarChar(255)
+  imageWidth  Float?   @map("image_width")
+  imageHeight Float?   @map("image_height")
+  createdAt   DateTime @map("createdat") @db.Timestamptz
+  updatedAt   DateTime @map("updatedat") @db.Timestamptz
+  hasSvg      Boolean  @default(false) @map("has_svg")
+
+  model Model  @relation(fields: [modelId], references: [id])
+  parts Part[]
+
+  @@unique([modelId, slideNumber])
+  @@map("slides")
+}
+
+model Part {
+  id           Int      @id @default(autoincrement())
+  modelId      Int      @map("model_id")
+  slideId      Int?     @map("slide_id")
+  number       Int
+  name         String?  @db.VarChar(255)
+  partNumber   String   @map("part_number") @db.VarChar(255)
+  xCoord       Float?   @map("x_coord")
+  yCoord       Float?   @map("y_coord")
+  price        Float    @default(0)
+  availability Boolean  @default(true)
+  quantity     Int      @default(0)
+  width        Float?
+  height       Float?
+  createdAt    DateTime @map("createdat") @db.Timestamptz
+  updatedAt    DateTime @map("updatedat") @db.Timestamptz
+  slug         String?  @db.VarChar(255)
+
+  model Model  @relation(fields: [modelId], references: [id])
+  slide Slide? @relation(fields: [slideId], references: [id])
+
+  @@unique([modelId, number])
+  @@map("parts")
+}
