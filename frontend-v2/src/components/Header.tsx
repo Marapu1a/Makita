@@ -8,7 +8,7 @@ interface ModelHit {
   category: { name: string; slug: string | null }
 }
 
-function SearchBar() {
+export function SearchBar() {
   const [searchTerm, setSearchTerm] = useState('')
   const [suggestions, setSuggestions] = useState<Record<string, ModelHit[]>>({})
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
@@ -149,11 +149,8 @@ export default function Header() {
             </a>
           </nav>
 
-          {/* Поиск */}
-          <SearchBar />
-
           {/* Корзина */}
-          <div className="mt-2 lg:mt-0">
+          <div className="mt-2 lg:mt-0 lg:ml-auto">
             <a
               href="/cart"
               className="flex items-center space-x-2 border border-white bg-black/20 px-3 py-2 rounded hover:bg-black/30 transition w-fit"

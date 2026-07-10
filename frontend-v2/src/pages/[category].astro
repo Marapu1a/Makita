@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro'
 import { getCategory } from '../lib/api'
+import pdfIndex from '../data/pdf-index.json'
 
 const { category: categorySlug } = Astro.params
 
@@ -13,6 +14,20 @@ try {
 
 const title = data.seoTitle || `${data.name} — запчасти Makita`
 const description = data.seoDescription || `Каталог запчастей Makita для ${data.name}. Взрыв-схемы и оригинальные детали.`
+
+const hasChildren = data.children && data.children.length > 0
+
+// Путь к картинке категории (как на старом фронте)
+const catImg = (name: string) =>
+  `/images/categories/${encodeURIComponent(name.replace(/\s+/g, '_').replace(/[\/\\]/g, '_'))}.webp`
+
+// PDF-модели этой категории (схемы, существующие только в PDF)
+const pdfModels = (pdfIndex as { name: string; path: string; category: string }[])
+  .filter((pdf) => pdf.category === data.name)
+  .map((pdf) => ({
+    ...pdf,
+    path: pdf.path.split('/').map((seg) => encodeURIComponent(seg)).join('/'),
+  }))
 ---
 
 <Layout title={title} description={description}>
@@ -28,36 +43,52 @@ const description = data.seoDescription || `Каталог запчастей Ma
     <span class="text-gray-700">{data.name}</span>
   </Fragment>
 
-  <h1 class="text-2xl font-bold mb-6">{data.name}</h1>
+  <div class="flex flex-1 flex-col items-center px-4">
+    <h1 class="text-2xl font-bold mb-6 self-start">{data.name}</h1>
 
-  {data.children && data.children.length > 0 && (
-    <section class="mb-8">
-      <h2 class="text-lg font-semibold mb-3">Подкатегории</h2>
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {data.children.map((child) => (
-          <a
-            href={`/${child.slug}`}
-            class="bg-blue-50 rounded-xl border border-blue-100 hover:shadow-md hover:border-blue-300 transition-all p-4 flex items-center justify-center text-center"
-          >
-            <span class="text-sm font-medium">{child.name}</span>
+    {hasChildren ? (
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 w-full max-w-screen-lg">
+        {data.children!.map((child) => (
+          <a href={`/${child.slug}`}>
+            <div class="bg-white p-4 rounded-md shadow-md hover:shadow-lg transition flex flex-col items-center">
+              <img
+                src={catImg(child.name)}
+                alt={child.name}
+                loading="lazy"
+                class="h-24 sm:h-28 lg:h-32 object-contain mb-2"
+              />
+              <p class="text-sm font-semibold text-center break-words line-clamp-2">
+                {child.name}
+              </p>
+            </div>
           </a>
         ))}
       </div>
-    </section>
-  )}
+    ) : (
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 w-full max-w-screen-lg">
+        {models.map((model) => (
+          <a href={`/${categorySlug}/${model.slug}`}>
+            <div class="bg-white p-4 rounded-md shadow-md hover:shadow-lg transition flex flex-col items-center">
+              <p class="text-sm font-semibold text-center break-words line-clamp-2">
+                {model.name}
+              </p>
+            </div>
+          </a>
+        ))}
+        {pdfModels.map((model) => (
+          <a href={model.path} target="_blank" rel="noopener noreferrer">
+            <div class="bg-white p-4 rounded-md shadow-md hover:bg-gray-100 flex flex-col items-center">
+              <p class="text-sm font-semibold text-blue-600 underline text-center break-words line-clamp-2">
+                {model.name}
+              </p>
+            </div>
+          </a>
+        ))}
+      </div>
+    )}
 
-  {models.length === 0 && (!data.children || data.children.length === 0) && (
-    <p class="text-gray-500">Модели не найдены.</p>
-  )}
-
-  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-    {models.map((model) => (
-      <a
-        href={`/${categorySlug}/${model.slug}`}
-        class="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-200 transition-all p-3 flex flex-col items-center text-center gap-2"
-      >
-        <span class="text-sm font-semibold">{model.name}</span>
-      </a>
-    ))}
+    {!hasChildren && models.length === 0 && pdfModels.length === 0 && (
+      <p class="text-gray-500">Модели не найдены.</p>
+    )}
   </div>
 </Layout>
