@@ -130,9 +130,13 @@ Slide.belongsTo(Model, { foreignKey: 'model_id', as: 'model' });
 Slide.hasMany(Part, { foreignKey: 'slide_id', as: 'parts' });
 Part.belongsTo(Slide, { foreignKey: 'slide_id', as: 'slide' });
 
-// 🔃 Синхронизация — только в development
-// В production схема управляется вручную через SQL-миграции
-if (process.env.NODE_ENV !== 'production') {
+// 🔃 Синхронизация схемы — ТОЛЬКО по явному флагу ALLOW_DB_SYNC=true.
+// Схема управляется SQL-миграциями (migrations/sql). Проверка «не production»
+// уже приводила к катастрофе: NODE_ENV не был задан в контейнере, и sync
+// при рестарте админки снёс slug/SEO-колонки на проде (2026-07-11).
+// Модели здесь описывают СТАРУЮ денормализованную схему — sync с alter
+// на нормализованной базе (миграция 001) разрушителен.
+if (process.env.ALLOW_DB_SYNC === 'true') {
     const reset = process.argv.includes('--reset');
     sequelize.sync({ force: reset, alter: !reset })
         .then(() => {

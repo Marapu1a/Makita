@@ -33,6 +33,9 @@ services:
     restart: always
     env_file:
       - ./admin-backend/.env.production
+    environment:
+      # Страховка от sequelize.sync: без явного ALLOW_DB_SYNC=true схему не трогать
+      - NODE_ENV=production
     ports:
       - "5001:5001"
     depends_on:
