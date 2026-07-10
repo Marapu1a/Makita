@@ -9,7 +9,7 @@ let data, models
 try {
   ({ data, models } = await getCategory(categorySlug!))
 } catch {
-  return Astro.redirect('/', 302)
+  return Astro.rewrite('/404')
 }
 
 const title = data.seoTitle || `${data.name} — запчасти Makita`
@@ -28,9 +28,26 @@ const pdfModels = (pdfIndex as { name: string; path: string; category: string }[
     ...pdf,
     path: pdf.path.split('/').map((seg) => encodeURIComponent(seg)).join('/'),
   }))
+
+const SITE = import.meta.env.SITE_URL || 'https://makita-remont.ru'
+const breadcrumbsLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Каталог', item: `${SITE}/` },
+    ...(data.parent
+      ? [{ '@type': 'ListItem', position: 2, name: data.parent.name, item: `${SITE}/${data.parent.slug}` },
+         { '@type': 'ListItem', position: 3, name: data.name, item: `${SITE}/${data.slug}` }]
+      : [{ '@type': 'ListItem', position: 2, name: data.name, item: `${SITE}/${data.slug}` }]),
+  ],
+}
 ---
 
 <Layout title={title} description={description}>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbsLd)} />
+  </Fragment>
+
   <Fragment slot="breadcrumbs">
     <a href="/" class="hover:text-blue-600">Каталог</a>
     <span class="mx-1">/</span>

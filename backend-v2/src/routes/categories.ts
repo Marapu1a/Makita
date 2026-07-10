@@ -59,7 +59,7 @@ export const categoriesRoutes: FastifyPluginAsync = async (fastify) => {
     async (req, reply) => {
       const { slug } = req.params
       const page  = Math.max(1, parseInt(req.query.page  || '1'))
-      const limit = Math.min(100, parseInt(req.query.limit || '60'))
+      const limit = Math.min(500, parseInt(req.query.limit || '500'))
       const skip  = (page - 1) * limit
 
       const category = await prisma.category.findFirst({

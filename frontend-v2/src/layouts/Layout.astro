@@ -9,10 +9,15 @@ interface Props {
   description?: string
   noindex?: boolean
   sidebar?: boolean
+  /** Канонический путь страницы (без домена); по умолчанию — текущий путь */
+  canonicalPath?: string
 }
 
-const { title, description, noindex, sidebar = true } = Astro.props
+const { title, description, noindex, sidebar = true, canonicalPath } = Astro.props
 const currentPath = Astro.url.pathname
+
+const SITE = import.meta.env.SITE_URL || 'https://makita-remont.ru'
+const canonical = noindex ? null : `${SITE}${canonicalPath ?? currentPath}`
 
 // Корневые категории для сайдбара
 const categories = sidebar ? await getCategories() : []
@@ -27,7 +32,17 @@ const categories = sidebar ? await getCategories() : []
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
     {noindex && <meta name="robots" content="noindex,nofollow" />}
+    {canonical && <link rel="canonical" href={canonical} />}
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    {canonical && <meta property="og:url" content={canonical} />}
+    <meta property="og:site_name" content="Запчасти Makita — makita-remont.ru" />
+    <meta property="og:locale" content="ru_RU" />
+
     <link rel="icon" href="/favicon.ico" />
+    <slot name="head" />
   </head>
   <body class="min-h-screen bg-gray-50 text-gray-900 flex flex-col">
     <Header client:load />

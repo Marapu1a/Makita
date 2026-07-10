@@ -10,7 +10,7 @@ try {
     return Astro.redirect(`/${data.categorySlug}/${data.slug}`, 301)
   }
 } catch {
-  // API недоступен — падаем на главную
+  // API недоступен
 }
-return Astro.redirect('/', 302)
+return Astro.rewrite('/404')
 ---

@@ -1,0 +1,20 @@
+---
+import Layout from '../layouts/Layout.astro'
+---
+
+<Layout title="Страница не найдена — запчасти Makita" noindex={true} sidebar={false}>
+  <div class="text-center py-16">
+    <p class="text-6xl font-bold text-gray-300 mb-4">404</p>
+    <h1 class="text-2xl font-bold mb-2">Страница не найдена</h1>
+    <p class="text-gray-600 mb-6">
+      Возможно, страница была перемещена или удалена.
+      Воспользуйтесь поиском или вернитесь в каталог.
+    </p>
+    <a
+      href="/"
+      class="inline-block px-6 py-2 bg-cyan-800 text-white rounded hover:bg-cyan-700 transition"
+    >
+      В каталог
+    </a>
+  </div>
+</Layout>
