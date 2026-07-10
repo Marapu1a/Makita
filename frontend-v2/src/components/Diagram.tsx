@@ -191,8 +191,13 @@ export default function Diagram({ model }: Props) {
 
   const DiagramImage = ({ slide }: { slide: Slide }) => (
     <div
-      className="relative"
-      style={{ aspectRatio: `${slide.imageWidth || 800}/${slide.imageHeight || 600}` }}
+      className="relative mx-auto"
+      style={{
+        aspectRatio: `${slide.imageWidth || 800}/${slide.imageHeight || 600}`,
+        // Нормализуем размер: слайд вписывается и по ширине колонки, и по высоте экрана
+        width: '100%',
+        maxWidth: `min(100%, calc(82vh * ${(slide.imageWidth || 800) / (slide.imageHeight || 600)}))`,
+      }}
     >
       <img
         src={`${imgBase}/${slide.imagePath}`}
@@ -255,10 +260,10 @@ export default function Diagram({ model }: Props) {
         </div>
       )}
 
-      <div className="py-4 flex gap-4">
+      <div className="py-4 flex gap-4 items-start">
         {/* Diagram — desktop */}
         {!isMobile && activeSlide && (
-          <div className="w-3/5">
+          <div className="flex-1 min-w-0">
             <DiagramImage slide={activeSlide} />
           </div>
         )}
@@ -273,8 +278,8 @@ export default function Diagram({ model }: Props) {
           </button>
         )}
 
-        {/* Parts table */}
-        <div className="flex-1 overflow-auto max-h-screen">
+        {/* Parts table — ширина по содержимому, вертикальный скролл в пределах экрана */}
+        <div className="shrink-0 max-w-full md:max-w-[45%] overflow-auto max-h-[82vh]">
           <div className="overflow-x-auto border rounded">
             <table className="table-auto border-collapse border text-sm">
               <thead>
