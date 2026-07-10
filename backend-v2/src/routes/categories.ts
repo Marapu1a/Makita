@@ -22,6 +22,19 @@ export const categoriesRoutes: FastifyPluginAsync = async (fastify) => {
     }
   })
 
+  // GET /api/v2/categories/by-id/:id — slug по старому ID (для 301-редиректов)
+  fastify.get<{ Params: { id: string } }>('/by-id/:id', async (req, reply) => {
+    const id = parseInt(req.params.id)
+    if (isNaN(id)) return reply.status(400).send({ error: 'Неверный ID' })
+
+    const category = await prisma.category.findUnique({
+      where: { id },
+      select: { slug: true },
+    })
+    if (!category?.slug) return reply.status(404).send({ error: 'Категория не найдена' })
+    return { data: { slug: category.slug } }
+  })
+
   // GET /api/v2/categories — дерево категорий (root + children)
   fastify.get('/', async () => {
     const roots = await prisma.category.findMany({

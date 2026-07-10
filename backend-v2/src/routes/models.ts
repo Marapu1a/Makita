@@ -21,6 +21,19 @@ export const modelsRoutes: FastifyPluginAsync = async (fastify) => {
     return { data: models }
   })
 
+  // GET /api/v2/models/by-id/:id — slug по старому ID (для 301-редиректов)
+  fastify.get<{ Params: { id: string } }>('/by-id/:id', async (req, reply) => {
+    const id = parseInt(req.params.id)
+    if (isNaN(id)) return reply.status(400).send({ error: 'Неверный ID' })
+
+    const model = await prisma.model.findUnique({
+      where: { id },
+      select: { slug: true, category: { select: { slug: true } } },
+    })
+    if (!model?.slug) return reply.status(404).send({ error: 'Модель не найдена' })
+    return { data: { slug: model.slug, categorySlug: model.category.slug } }
+  })
+
   // GET /api/v2/models/:slug — модель + категория + слайды с деталями
   fastify.get<{ Params: { slug: string } }>('/:slug', async (req, reply) => {
     const { slug } = req.params

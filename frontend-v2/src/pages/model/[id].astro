@@ -1,0 +1,16 @@
+---
+// 301-редирект со старого URL /model/:id на новый /:categorySlug/:modelSlug
+const { id } = Astro.params
+const apiBase = import.meta.env.API_URL || 'http://localhost:5001'
+
+try {
+  const res = await fetch(`${apiBase}/api/v2/models/by-id/${id}`)
+  if (res.ok) {
+    const { data } = await res.json()
+    return Astro.redirect(`/${data.categorySlug}/${data.slug}`, 301)
+  }
+} catch {
+  // API недоступен — падаем на главную
+}
+return Astro.redirect('/', 302)
+---
