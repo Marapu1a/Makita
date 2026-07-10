@@ -22,7 +22,8 @@ export interface ModelCard {
 }
 
 export interface Part {
-  id: number
+  id: number       // id вхождения на схему (diagram_part) — уникальный ключ строки
+  partId: number   // id физической детали — для корзины и заказов
   slideId: number | null
   number: number
   partNumber: string

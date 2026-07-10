@@ -4,13 +4,17 @@ const SITE = import.meta.env.SITE_URL || 'https://makita-remont.ru'
 
 export const GET: APIRoute = async () => {
   const apiBase = import.meta.env.API_URL || 'http://localhost:5001'
-  const res = await fetch(`${apiBase}/api/v2/categories/sitemap`)
-  if (!res.ok) return new Response('Sitemap unavailable', { status: 502 })
+  const [catRes, partsRes] = await Promise.all([
+    fetch(`${apiBase}/api/v2/categories/sitemap`),
+    fetch(`${apiBase}/api/v2/parts/sitemap`),
+  ])
+  if (!catRes.ok || !partsRes.ok) return new Response('Sitemap unavailable', { status: 502 })
 
-  const { categories, models } = (await res.json()) as {
+  const { categories, models } = (await catRes.json()) as {
     categories: string[]
     models: { slug: string; categorySlug: string | null }[]
   }
+  const { parts } = (await partsRes.json()) as { parts: string[] }
 
   const urls: string[] = [
     `${SITE}/`,
@@ -20,6 +24,7 @@ export const GET: APIRoute = async () => {
     ...models
       .filter((m) => m.categorySlug)
       .map((m) => `${SITE}/${m.categorySlug}/${m.slug}`),
+    ...parts.map((slug) => `${SITE}/parts/${slug}`),
   ]
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>

@@ -11,7 +11,8 @@ interface Slide {
 }
 
 interface Part {
-  id: number
+  id: number       // id вхождения на схему — уникальный ключ строки
+  partId: number   // id физической детали — для корзины
   slideId: number | null
   number: number
   partNumber: string
@@ -244,7 +245,7 @@ export default function Diagram({ model }: Props) {
     <div onMouseMove={handleMouseMove}>
       {/* Slide thumbnails */}
       {slides.length > 1 && (
-        <div className="flex flex-wrap gap-2 mb-4 hidden md:flex">
+        <div className="flex-wrap gap-2 mb-4 hidden md:flex">
           {slides.map((slide, i) => (
             <img
               key={slide.id}
@@ -303,7 +304,15 @@ export default function Diagram({ model }: Props) {
                       onMouseLeave={handleMouseLeave}
                     >
                       <td className="border px-2 py-1 text-center">{part.number}</td>
-                      <td className="border px-2 py-1">{part.partNumber}</td>
+                      <td className="border px-2 py-1">
+                        {part.slug ? (
+                          <a href={`/parts/${part.slug}`} className="text-blue-700 hover:underline">
+                            {part.partNumber}
+                          </a>
+                        ) : (
+                          part.partNumber
+                        )}
+                      </td>
                       <td className="border px-2 py-1">{part.name || '—'}</td>
                       <td className="border px-2 py-1 text-center">
                         {part.price > 0 ? `${Math.ceil(part.price)} ₽` : '—'}
@@ -366,7 +375,7 @@ export default function Diagram({ model }: Props) {
       {selectedPart && (
         <CartModal
           part={{
-            id: selectedPart.id,
+            id: selectedPart.partId,
             part_number: selectedPart.partNumber,
             name: selectedPart.name ?? 'Без названия',
             price: selectedPart.price,

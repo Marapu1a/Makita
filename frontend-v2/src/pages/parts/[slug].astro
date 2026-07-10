@@ -1,0 +1,118 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import AddToCart from '../../components/AddToCart'
+
+interface UsedIn {
+  modelId: number
+  modelName: string
+  modelSlug: string | null
+  category: string
+  categorySlug: string | null
+  number: number
+  slideNumber: number | null
+}
+
+const { slug } = Astro.params
+const apiBase = import.meta.env.API_URL || 'http://localhost:5001'
+
+let part
+try {
+  const res = await fetch(`${apiBase}/api/v2/parts/by-slug/${encodeURIComponent(slug!)}`)
+  if (!res.ok) return Astro.redirect('/', 302)
+  ;({ data: part } = await res.json())
+} catch {
+  return Astro.redirect('/', 302)
+}
+
+const usedIn: UsedIn[] = part.usedIn
+const displayName = part.name || `Деталь ${part.partNumber}`
+
+const title = part.seoTitle
+  || `${displayName} (${part.partNumber}) — купить оригинальную запчасть Makita`
+const description = part.seoDescription
+  || `Оригинальная запчасть Makita: ${displayName}, артикул ${part.partNumber}. ${
+    part.price > 0 ? `Цена ${Math.ceil(part.price)} ₽. ` : ''
+  }Используется в ${usedIn.length} моделях. Заказ онлайн, доставка по России.`
+const h1 = part.h1 || `${displayName} — артикул ${part.partNumber}`
+
+const modelsWord = (() => {
+  const n = usedIn.length
+  if ([11, 12, 13, 14].includes(n % 100)) return 'моделях'
+  if (n % 10 === 1) return 'модели'
+  return 'моделях'
+})()
+---
+
+<Layout title={title} description={description} noindex={!part.isIndexable} sidebar={false}>
+  <Fragment slot="breadcrumbs">
+    <a href="/" class="hover:text-blue-600">Каталог</a>
+    <span class="mx-1">/</span>
+    <span class="text-gray-700">Артикул {part.partNumber}</span>
+  </Fragment>
+
+  <div class="max-w-4xl">
+    <h1 class="text-2xl font-bold mb-4">{h1}</h1>
+
+    <div class="bg-white rounded-md shadow-md p-6 mb-8 flex flex-col sm:flex-row sm:items-center gap-6">
+      <div class="flex-1">
+        <p class="text-gray-600 mb-1">
+          Артикул: <span class="font-mono font-semibold text-gray-900">{part.partNumber}</span>
+        </p>
+        {part.name && <p class="text-lg font-semibold mb-1">{part.name}</p>}
+        <p class="mb-1">
+          Наличие:{' '}
+          {part.availability
+            ? <span class="text-green-600 font-semibold">в наличии</span>
+            : <span class="text-red-500 font-semibold">нет в наличии</span>}
+        </p>
+        {part.price > 0 && (
+          <p class="text-2xl font-bold">{Math.ceil(part.price).toLocaleString('ru-RU')} ₽</p>
+        )}
+      </div>
+      <AddToCart
+        client:load
+        part={{
+          id: part.id,
+          part_number: part.partNumber,
+          name: displayName,
+          price: part.price,
+        }}
+        available={part.availability}
+      />
+    </div>
+
+    {part.content && <div class="prose max-w-none mb-8" set:html={part.content} />}
+
+    {usedIn.length > 0 && (
+      <section>
+        <h2 class="text-xl font-semibold mb-3">
+          Используется в {usedIn.length} {modelsWord}
+        </h2>
+        <div class="overflow-x-auto border rounded">
+          <table class="min-w-full border-collapse text-sm">
+            <thead>
+              <tr class="bg-gray-200 text-left">
+                <th class="border px-3 py-1">Модель</th>
+                <th class="border px-3 py-1">Категория</th>
+                <th class="border px-3 py-1 text-center">Позиция на схеме</th>
+              </tr>
+            </thead>
+            <tbody>
+              {usedIn.map((u) => (
+                <tr class="odd:bg-gray-50 hover:bg-gray-100">
+                  <td class="border px-3 py-1">
+                    <a href={`/${u.categorySlug}/${u.modelSlug}`} class="text-blue-700 hover:underline font-semibold">
+                      {u.modelName}
+                    </a>
+                  </td>
+                  <td class="border px-3 py-1">{u.category}</td>
+                  <td class="border px-3 py-1 text-center">{u.number}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )}
+  </div>
+</Layout>

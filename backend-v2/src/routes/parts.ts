@@ -1,55 +1,107 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { prisma } from '../db.js'
 
+// Общий include: где деталь используется
+const usedInSelect = {
+  diagramParts: {
+    select: {
+      number: true,
+      slide: { select: { slideNumber: true } },
+      model: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          category: { select: { name: true, slug: true } },
+        },
+      },
+    },
+    orderBy: { model: { name: 'asc' } },
+  },
+} as const
+
+function shapePart(part: {
+  id: number
+  partNumber: string
+  name: string | null
+  price: number
+  availability: boolean
+  quantity: number
+  slug: string | null
+  seoTitle?: string | null
+  seoDescription?: string | null
+  h1?: string | null
+  content?: string | null
+  isIndexable?: boolean
+  diagramParts: {
+    number: number
+    slide: { slideNumber: number } | null
+    model: { id: number; name: string; slug: string | null; category: { name: string; slug: string | null } }
+  }[]
+}) {
+  const { diagramParts, ...rest } = part
+  return {
+    ...rest,
+    usedIn: diagramParts.map((dp) => ({
+      modelId: dp.model.id,
+      modelName: dp.model.name,
+      modelSlug: dp.model.slug,
+      category: dp.model.category.name,
+      categorySlug: dp.model.category.slug,
+      number: dp.number,
+      slideNumber: dp.slide?.slideNumber ?? null,
+    })),
+  }
+}
+
 export const partsRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/v2/parts/search?q=&limit=&page= — поиск по артикулу или названию
-  // ВАЖНО: этот маршрут должен быть зарегистрирован ДО /:partNumber
   fastify.get<{ Querystring: { q?: string; page?: string; limit?: string } }>(
     '/search',
     async (req, reply) => {
       const q     = (req.query.q || '').trim()
       const page  = Math.max(1, parseInt(req.query.page  || '1'))
       const limit = Math.min(50, parseInt(req.query.limit || '20'))
-      const skip  = (page - 1) * limit
 
       if (!q || q.length < 2) {
         return reply.status(400).send({ error: 'Запрос слишком короткий (минимум 2 символа)' })
       }
 
-      // Ищем уникальные part_number по артикулу или названию.
-      // Берём одну строку на part_number (DISTINCT ON эквивалент через groupBy не поддерживается,
-      // используем raw query для агрегации).
-      const rows = await prisma.$queryRaw<
-        { part_number: string; name: string | null; price: number; availability: boolean; slug: string | null; total: bigint }[]
-      >`
-        SELECT DISTINCT ON (part_number)
-          part_number,
-          name,
-          price,
-          availability,
-          slug,
-          COUNT(*) OVER() AS total
-        FROM parts
-        WHERE
-          part_number ILIKE ${'%' + q + '%'}
-          OR name ILIKE ${'%' + q + '%'}
-        ORDER BY part_number, id
-        LIMIT ${limit} OFFSET ${skip}
-      `
+      const where = {
+        OR: [
+          { partNumber: { contains: q, mode: 'insensitive' as const } },
+          { name: { contains: q, mode: 'insensitive' as const } },
+        ],
+      }
 
-      const total = rows.length > 0 ? Number(rows[0].total) : 0
-      const data  = rows.map(({ total: _t, ...r }) => r)
+      const [total, rows] = await Promise.all([
+        prisma.part.count({ where }),
+        prisma.part.findMany({
+          where,
+          select: { partNumber: true, name: true, price: true, availability: true, slug: true },
+          orderBy: { partNumber: 'asc' },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+      ])
+
+      // Ключи в snake_case — для совместимости с прежним форматом ответа
+      const data = rows.map((r) => ({
+        part_number: r.partNumber,
+        name: r.name,
+        price: r.price,
+        availability: r.availability,
+        slug: r.slug,
+      }))
 
       return { data, total, page, limit }
     }
   )
 
-  // GET /api/v2/parts/:partNumber — деталь по артикулу + список моделей где используется
-  fastify.get<{ Params: { partNumber: string } }>('/:partNumber', async (req, reply) => {
-    const { partNumber } = req.params
-
-    const rows = await prisma.part.findMany({
-      where: { partNumber },
+  // GET /api/v2/parts/by-slug/:slug — деталь по слагу (для SEO-страниц)
+  fastify.get<{ Params: { slug: string } }>('/by-slug/:slug', async (req, reply) => {
+    const part = await prisma.part.findUnique({
+      where: { slug: req.params.slug },
       select: {
         id: true,
         partNumber: true,
@@ -58,35 +110,44 @@ export const partsRoutes: FastifyPluginAsync = async (fastify) => {
         availability: true,
         quantity: true,
         slug: true,
-        number: true,
-        model: {
-          select: { id: true, name: true, slug: true, category: { select: { name: true, slug: true } } },
-        },
-        slide: { select: { slideNumber: true } },
+        seoTitle: true,
+        seoDescription: true,
+        h1: true,
+        content: true,
+        isIndexable: true,
+        ...usedInSelect,
       },
-      orderBy: { model: { name: 'asc' } },
     })
+    if (!part) return reply.status(404).send({ error: 'Деталь не найдена' })
+    return { data: shapePart(part) }
+  })
 
-    if (!rows.length) return reply.status(404).send({ error: 'Деталь не найдена' })
+  // GET /api/v2/parts/sitemap — слаги индексируемых деталей
+  fastify.get('/sitemap', async () => {
+    const parts = await prisma.part.findMany({
+      where: { slug: { not: null }, isIndexable: true },
+      select: { slug: true },
+      orderBy: { partNumber: 'asc' },
+    })
+    return { parts: parts.map((p) => p.slug) }
+  })
 
-    const first = rows[0]
-    const part = {
-      partNumber: first.partNumber,
-      name:       first.name,
-      price:      first.price,
-      availability: first.availability,
-      slug:       first.slug,
-    }
-    const usedIn = rows.map((r) => ({
-      modelId:     r.model.id,
-      modelName:   r.model.name,
-      modelSlug:   r.model.slug,
-      category:    r.model.category.name,
-      categorySlug: r.model.category.slug,
-      number:      r.number,
-      slideNumber: r.slide?.slideNumber ?? null,
-    }))
-
-    return { data: { ...part, usedIn } }
+  // GET /api/v2/parts/:partNumber — деталь по артикулу + где используется
+  fastify.get<{ Params: { partNumber: string } }>('/:partNumber', async (req, reply) => {
+    const part = await prisma.part.findUnique({
+      where: { partNumber: req.params.partNumber },
+      select: {
+        id: true,
+        partNumber: true,
+        name: true,
+        price: true,
+        availability: true,
+        quantity: true,
+        slug: true,
+        ...usedInSelect,
+      },
+    })
+    if (!part) return reply.status(404).send({ error: 'Деталь не найдена' })
+    return { data: shapePart(part) }
   })
 }

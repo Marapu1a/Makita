@@ -64,30 +64,56 @@ export const modelsRoutes: FastifyPluginAsync = async (fastify) => {
             hasSvg: true,
           },
         },
-        // Все детали плоским списком — клиент фильтрует по slideId сам (как старый фронт)
-        parts: {
+        // Все вхождения деталей плоским списком — клиент фильтрует по slideId сам
+        diagramParts: {
           orderBy: { number: 'asc' },
           select: {
             id: true,
             slideId: true,
             number: true,
-            partNumber: true,
-            name: true,
-            price: true,
-            availability: true,
-            quantity: true,
-            slug: true,
             xCoord: true,
             yCoord: true,
             width: true,
             height: true,
+            part: {
+              select: {
+                id: true,
+                partNumber: true,
+                name: true,
+                price: true,
+                availability: true,
+                quantity: true,
+                slug: true,
+              },
+            },
           },
         },
       },
     })
 
     if (!model) return reply.status(404).send({ error: 'Модель не найдена' })
-    return { data: model }
+
+    // Плоский формат для фронта: id — вхождение (уникальный ключ строки),
+    // partId — физическая деталь (для корзины и заказов)
+    const { diagramParts, ...rest } = model
+    const parts = diagramParts.map((dp) => ({
+      id: dp.id,
+      partId: dp.part.id,
+      slideId: dp.slideId,
+      number: dp.number,
+      partNumber: dp.part.partNumber,
+      name: dp.part.name,
+      price: dp.part.price,
+      availability: dp.part.availability,
+      quantity: dp.part.quantity,
+      slug: dp.part.slug,
+      xCoord: dp.xCoord,
+      yCoord: dp.yCoord,
+      width: dp.width,
+      height: dp.height,
+    }))
+
+    return { data: { ...rest, parts } }
   })
 
   // GET /api/v2/models — список моделей по category_id (legacy-совместимость)
