@@ -93,10 +93,11 @@ def run(dry_run: bool, only: str | None):
 
     # --- Models ---
     if not only or only == 'models':
+        # Счёт деталей — через diagram_parts (после нормализации, миграция 001)
         cur.execute("""
             SELECT m.id, m.name, c.name,
                    (SELECT COUNT(*) FROM slides s WHERE s.model_id = m.id),
-                   (SELECT COUNT(DISTINCT p.part_number) FROM parts p WHERE p.model_id = m.id)
+                   (SELECT COUNT(DISTINCT dp.part_id) FROM diagram_parts dp WHERE dp.model_id = m.id)
             FROM models m
             JOIN categories c ON c.id = m.category_id
             WHERE m.seo_title IS NULL
