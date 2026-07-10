@@ -110,24 +110,30 @@ export const getOrderById = async (id: number) => {
     return response.data.data;
 };
 
-// Загрузка файла
-export const uploadPriceFile = async (file: File) => {
+// Загрузка файла цен: kind = 'result' (основной) | 'site' (выгрузка центрального сайта)
+export const uploadPriceFile = async (file: File, kind: 'result' | 'site' = 'result') => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('kind', kind);
 
-    await fetch(`${API_URL}/api/upload-price`, {
+    const res = await fetch(`${API_URL}/api/upload-price`, {
         method: 'POST',
         body: formData,
         credentials: 'include',
     });
+    if (!res.ok) throw new Error('upload failed');
+    return res.json();
 };
 
-// Запуск обновления базы
-export const updatePrices = async () => {
-    await fetch(`${API_URL}/api/update-prices`, {
+// Запуск обновления базы — возвращает отчёт скрипта
+export const updatePrices = async (): Promise<{ message: string; report?: string }> => {
+    const res = await fetch(`${API_URL}/api/update-prices`, {
         method: 'POST',
         credentials: 'include',
     });
+    const data = await res.json();
+    if (!res.ok) throw Object.assign(new Error(data.message || 'update failed'), { report: data.report });
+    return data;
 };
 
 export default api;

@@ -13,38 +13,54 @@ const backupDir = path.join(uploadDir, 'backups');
 
 const upload = multer({ dest: uploadDir });
 
-// Роут для загрузки прайса
+// Имена файлов по типу загрузки
+const FILE_KINDS = {
+    result: 'result.xlsx',              // основной источник (обязателен)
+    site: 'makita_site_update.xlsx',    // выгрузка центрального сайта (опционален, применяется поверх)
+};
+
+// Роут для загрузки прайса: kind = result | site
 router.post('/upload-price', upload.single('file'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: 'Файл не был загружен' });
     }
 
-    const targetPath = path.join(uploadDir, 'price.xlsx');
+    const kind = req.body.kind || 'result';
+    const targetName = FILE_KINDS[kind];
+    if (!targetName) {
+        fs.unlink(req.file.path, () => {});
+        return res.status(400).json({ message: `Неизвестный тип файла: ${kind}` });
+    }
 
-    // Перемещаем файл и переименовываем
+    const targetPath = path.join(uploadDir, targetName);
+
     fs.rename(req.file.path, targetPath, (err) => {
         if (err) {
             console.error(err);
             return res.status(500).json({ message: 'Ошибка при сохранении файла' });
         }
-        res.json({ message: 'Файл успешно загружен' });
+        res.json({ message: `Файл ${targetName} успешно загружен` });
     });
 });
 
-// Роут для запуска скрипта обновления
+// Роут для запуска скрипта обновления — возвращает отчёт скрипта
 router.post('/update-prices', (req, res) => {
     const scriptPath = path.join(__dirname, '../script/prices_update.py');
 
-    exec(`python3 ${scriptPath}`, (error, stdout, stderr) => {  // Локально нужно python без "3"
+    if (!fs.existsSync(path.join(uploadDir, FILE_KINDS.result))) {
+        return res.status(400).json({ message: 'Сначала загрузите result.xlsx' });
+    }
+
+    exec(`python3 ${scriptPath}`, { timeout: 10 * 60 * 1000 }, (error, stdout, stderr) => {  // Локально нужно python без "3"
         if (error) {
-            console.error(`Ошибка запуска скрипта: ${error.message}`);
-            return res.status(500).json({ message: 'Ошибка запуска скрипта' });
-        }
-        if (stderr) {
-            console.error(`stderr: ${stderr}`);
+            console.error(`Ошибка скрипта: ${error.message}\n${stderr}`);
+            return res.status(500).json({
+                message: 'Ошибка при обновлении',
+                report: `${stderr || error.message}`,
+            });
         }
         console.log(`stdout: ${stdout}`);
-        res.json({ message: 'Обновление базы запущено' });
+        res.json({ message: 'Обновление завершено', report: stdout });
     });
 });
 
