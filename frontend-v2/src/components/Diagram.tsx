@@ -201,9 +201,8 @@ export default function Diagram({ model }: Props) {
       className="relative mx-auto"
       style={{
         aspectRatio: `${slide.imageWidth || 800}/${slide.imageHeight || 600}`,
-        // Нормализуем размер: слайд вписывается и по ширине колонки, и по высоте экрана
+        // Схема на всю ширину колонки — таблица рядом sticky и не теряется при скролле
         width: '100%',
-        maxWidth: `min(100%, calc(82vh * ${(slide.imageWidth || 800) / (slide.imageHeight || 600)}))`,
       }}
     >
       <img
@@ -285,8 +284,8 @@ export default function Diagram({ model }: Props) {
           </button>
         )}
 
-        {/* Parts table — ширина по содержимому, вертикальный скролл в пределах экрана */}
-        <div className="shrink-0 max-w-full md:max-w-[45%] overflow-auto max-h-[82vh]">
+        {/* Parts table — sticky: едет за скроллом, всегда в поле зрения, скроллится внутри себя */}
+        <div className="shrink-0 max-w-full md:max-w-[45%] md:sticky md:top-4 overflow-auto max-h-[calc(100vh-2rem)]">
           <div className="overflow-x-auto border rounded">
             <table className="table-auto border-collapse border text-sm">
               <thead>
