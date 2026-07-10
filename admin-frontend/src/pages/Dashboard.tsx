@@ -63,7 +63,8 @@ const Dashboard = () => {
     kind: Kind,
     title: string,
     hint: string,
-    inputRef: React.RefObject<HTMLInputElement | null>
+    // React 18: useRef<T | null>(null) => MutableRefObject<T | null>
+    inputRef: React.MutableRefObject<HTMLInputElement | null>
   ) => (
     <div className="flex flex-col items-center border rounded-lg p-4 bg-white shadow-sm w-full">
       <h2 className="text-lg font-semibold mb-1">{title}</h2>
