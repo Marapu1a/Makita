@@ -1,0 +1,48 @@
+---
+import Layout from '../layouts/Layout.astro'
+import CertSlider from '../components/CertSlider'
+---
+
+<Layout
+  title="Информация — оригинальные запчасти Makita"
+  description="Оригинальные запчасти для электроинструментов Makita. Официальный дилер, сертифицированная продукция."
+>
+  <Fragment slot="breadcrumbs">
+    <a href="/" class="hover:text-blue-600">Каталог</a>
+    <span class="mx-1">/</span>
+    <span class="text-gray-700">Информация</span>
+  </Fragment>
+
+  <div class="flex flex-col lg:flex-row items-start gap-8">
+    <div class="w-full lg:w-2/3">
+      <h1 class="text-3xl font-bold mb-4">Запчасти для инструментов Makita</h1>
+      <p class="text-gray-700 mb-4">
+        Мы предлагаем широкий ассортимент оригинальных запчастей для
+        электроинструментов <strong>Makita</strong>. Все детали соответствуют
+        высоким стандартам качества и обеспечивают надежную работу вашего оборудования.
+      </p>
+      <p class="text-gray-700 mb-4">
+        Наша компания является официальным дилером ведущих производителей
+        запчастей и инструмента. Мы гарантируем подлинность продукции и
+        предоставляем всю необходимую документацию.
+      </p>
+      <p class="text-gray-700">
+        Вы можете быть уверены в надежности и долговечности наших запчастей –
+        мы работаем только с проверенными поставщиками.
+      </p>
+      <h2 class="text-xl font-semibold mt-6">📜 Сертификаты</h2>
+      <p class="text-gray-700">
+        Наша продукция сертифицирована, что подтверждает её качество и
+        соответствие стандартам.
+      </p>
+    </div>
+
+    <div class="w-full lg:w-1/3 flex flex-col items-center mt-6 lg:mt-0">
+      <h3 class="text-gray-700 text-center mb-2">
+        Компания ООО "Снабтулс" является <br />
+        официальным дилером торговой марки Makita:
+      </h3>
+      <CertSlider client:visible />
+    </div>
+  </div>
+</Layout>

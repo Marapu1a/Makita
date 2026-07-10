@@ -66,6 +66,58 @@ model Slide {
   @@map("slides")
 }
 
+model Order {
+  id               Int            @id @default(autoincrement())
+  name             String         @db.VarChar(255)
+  phone            String         @db.VarChar(255)
+  email            String         @db.VarChar(255)
+  deliveryMethod   DeliveryMethod @map("delivery_method")
+  transportCompany String?        @map("transport_company") @db.VarChar(255)
+  city             String?        @db.VarChar(255)
+  street           String?        @db.VarChar(255)
+  house            String?        @db.VarChar(255)
+  apartment        String?        @db.VarChar(255)
+  comment          String?        @db.Text
+  totalPrice       Float          @default(0) @map("total_price")
+  status           OrderStatus    @default(NEW)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime?      @updatedAt @map("updated_at") @db.Timestamptz
+
+  items OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        Int   @id @default(autoincrement())
+  orderId   Int   @map("order_id")
+  productId Int?  @map("product_id")
+  quantity  Int
+  price     Float
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+enum DeliveryMethod {
+  PICKUP          @map("Самовывоз")
+  DELIVERY        @map("Доставка")
+  REGION_SHIPPING @map("Отправка в регион")
+
+  @@map("enum_orders_delivery_method")
+}
+
+enum OrderStatus {
+  NEW        @map("Новый")
+  PROCESSING @map("В обработке")
+  SHIPPED    @map("Отправлен")
+  COMPLETED  @map("Завершён")
+  CANCELLED  @map("Отменён")
+
+  @@map("enum_orders_status")
+}
+
 model Part {
   id           Int      @id @default(autoincrement())
   modelId      Int      @map("model_id")

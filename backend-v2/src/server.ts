@@ -6,6 +6,7 @@ import { join } from 'path'
 import { categoriesRoutes } from './routes/categories.js'
 import { modelsRoutes } from './routes/models.js'
 import { partsRoutes } from './routes/parts.js'
+import { ordersRoutes } from './routes/orders.js'
 import { prisma } from './db.js'
 
 const server = Fastify({ logger: true })
@@ -22,6 +23,7 @@ await server.register(staticFiles, {
 await server.register(categoriesRoutes, { prefix: '/api/v2/categories' })
 await server.register(modelsRoutes,     { prefix: '/api/v2/models' })
 await server.register(partsRoutes,      { prefix: '/api/v2/parts' })
+await server.register(ordersRoutes,     { prefix: '/api/v2/orders' })
 
 server.get('/health', async () => ({ ok: true, ts: new Date().toISOString() }))
 

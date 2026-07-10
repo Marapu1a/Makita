@@ -2,6 +2,26 @@ import type { FastifyPluginAsync } from 'fastify'
 import { prisma } from '../db.js'
 
 export const categoriesRoutes: FastifyPluginAsync = async (fastify) => {
+  // GET /api/v2/categories/sitemap — все слаги для sitemap.xml
+  fastify.get('/sitemap', async () => {
+    const [categories, models] = await Promise.all([
+      prisma.category.findMany({
+        where: { slug: { not: null } },
+        select: { slug: true },
+        orderBy: { name: 'asc' },
+      }),
+      prisma.model.findMany({
+        where: { slug: { not: null } },
+        select: { slug: true, category: { select: { slug: true } } },
+        orderBy: { name: 'asc' },
+      }),
+    ])
+    return {
+      categories: categories.map((c) => c.slug),
+      models: models.map((m) => ({ slug: m.slug, categorySlug: m.category.slug })),
+    }
+  })
+
   // GET /api/v2/categories — дерево категорий (root + children)
   fastify.get('/', async () => {
     const roots = await prisma.category.findMany({
@@ -31,24 +51,28 @@ export const categoriesRoutes: FastifyPluginAsync = async (fastify) => {
 
       const category = await prisma.category.findFirst({
         where: { slug },
-        select: { id: true, name: true, slug: true, seoTitle: true, seoDescription: true, parentId: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          seoTitle: true,
+          seoDescription: true,
+          parentId: true,
+          parent: { select: { id: true, name: true, slug: true } },
+          children: {
+            select: { id: true, name: true, slug: true },
+            orderBy: { name: 'asc' },
+          },
+        },
       })
       if (!category) return reply.status(404).send({ error: 'Категория не найдена' })
 
-      // Включаем подкатегории (children) в выборку моделей
-      const categoryIds = [category.id]
-      if (category.parentId === null) {
-        const children = await prisma.category.findMany({
-          where: { parentId: category.id },
-          select: { id: true },
-        })
-        categoryIds.push(...children.map((c) => c.id))
-      }
-
+      // Только собственные модели категории: у родительских категорий моделей нет,
+      // их модели живут в подкатегориях и показываются на страницах подкатегорий
       const [total, models] = await Promise.all([
-        prisma.model.count({ where: { categoryId: { in: categoryIds } } }),
+        prisma.model.count({ where: { categoryId: category.id } }),
         prisma.model.findMany({
-          where: { categoryId: { in: categoryIds } },
+          where: { categoryId: category.id },
           select: { id: true, name: true, slug: true, imagePath: true },
           orderBy: { name: 'asc' },
           skip,

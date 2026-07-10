@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /cart
+Disallow: /api/
+
+Sitemap: https://makita-remont.ru/sitemap.xml

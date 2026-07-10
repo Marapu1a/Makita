@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import CartModal from './CartModal'
 
 interface Slide {
   id: number
@@ -42,6 +43,7 @@ export default function Diagram({ model }: Props) {
   const [hoveredPart, setHoveredPart] = useState<Part | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [selectedPart, setSelectedPart] = useState<Part | null>(null)
 
   const svgContainerRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
@@ -282,6 +284,7 @@ export default function Diagram({ model }: Props) {
                   <th className="border px-2 py-1">Название</th>
                   <th className="border px-2 py-1 text-center">Цена</th>
                   <th className="border px-2 py-1 text-center">Есть</th>
+                  <th className="border px-2 py-1 text-center"></th>
                 </tr>
               </thead>
               <tbody>
@@ -302,6 +305,20 @@ export default function Diagram({ model }: Props) {
                       </td>
                       <td className="border px-2 py-1 text-center">
                         {part.availability ? 'Да' : 'Нет'}
+                      </td>
+                      <td className="border px-2 py-1 text-center">
+                        <button
+                          className={`px-2 py-1 rounded text-white leading-none ${
+                            part.availability
+                              ? 'bg-green-600 hover:bg-green-700'
+                              : 'bg-gray-400 cursor-not-allowed'
+                          }`}
+                          onClick={() => part.availability && setSelectedPart(part)}
+                          disabled={!part.availability}
+                          title="Добавить в корзину"
+                        >
+                          +
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -338,6 +355,19 @@ export default function Diagram({ model }: Props) {
             )}
           </div>
         </div>
+      )}
+
+      {/* Add to cart modal */}
+      {selectedPart && (
+        <CartModal
+          part={{
+            id: selectedPart.id,
+            part_number: selectedPart.partNumber,
+            name: selectedPart.name ?? 'Без названия',
+            price: selectedPart.price,
+          }}
+          onClose={() => setSelectedPart(null)}
+        />
       )}
 
       {/* Tooltip */}

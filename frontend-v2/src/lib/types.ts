@@ -1,10 +1,17 @@
+export interface CategoryRef {
+  id: number
+  name: string
+  slug: string | null
+}
+
 export interface Category {
   id: number
   name: string
   slug: string | null
   seoTitle?: string | null
   seoDescription?: string | null
-  children?: { id: number; name: string; slug: string | null }[]
+  parent?: CategoryRef | null
+  children?: CategoryRef[]
 }
 
 export interface ModelCard {

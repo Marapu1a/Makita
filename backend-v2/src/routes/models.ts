@@ -2,6 +2,25 @@ import type { FastifyPluginAsync } from 'fastify'
 import { prisma } from '../db.js'
 
 export const modelsRoutes: FastifyPluginAsync = async (fastify) => {
+  // GET /api/v2/models/search?q= — поиск моделей по имени (для строки поиска)
+  fastify.get<{ Querystring: { q?: string } }>('/search', async (req, reply) => {
+    const q = (req.query.q || '').trim()
+    if (q.length < 2) return { data: [] }
+
+    const models = await prisma.model.findMany({
+      where: { name: { contains: q, mode: 'insensitive' } },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        category: { select: { name: true, slug: true } },
+      },
+      orderBy: { name: 'asc' },
+      take: 50,
+    })
+    return { data: models }
+  })
+
   // GET /api/v2/models/:slug — модель + категория + слайды с деталями
   fastify.get<{ Params: { slug: string } }>('/:slug', async (req, reply) => {
     const { slug } = req.params

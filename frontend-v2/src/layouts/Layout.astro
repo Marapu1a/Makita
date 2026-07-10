@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css'
+import Header from '../components/Header'
 
 interface Props {
   title: string
@@ -22,16 +23,11 @@ const { title, description, noindex } = Astro.props
     <link rel="icon" href="/favicon.ico" />
   </head>
   <body class="min-h-screen bg-gray-50 text-gray-900">
-    <header class="bg-white shadow-sm sticky top-0 z-40">
-      <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
-        <a href="/" class="text-xl font-bold text-blue-700 shrink-0">
-          Makita Запчасти
-        </a>
-        <nav class="text-sm text-gray-500">
-          <slot name="breadcrumbs" />
-        </nav>
-      </div>
-    </header>
+    <Header client:load />
+
+    <div class="max-w-7xl mx-auto px-4 pt-3 text-sm text-gray-500">
+      <slot name="breadcrumbs" />
+    </div>
 
     <main class="max-w-7xl mx-auto px-4 py-6">
       <slot />
