@@ -181,6 +181,9 @@ export default function Diagram({ model }: Props) {
   const handleMouseEnter = (part: Part) => setHoveredPart(part)
   const handleMouseLeave = () => setHoveredPart(null)
 
+  // Мусорный артикул 'NULL' от парсера: позиция на схеме настоящая, но деталь не опознана
+  const isUnknown = (p: Part) => p.partNumber === 'NULL'
+
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!tooltipRef.current || !hoveredPart) return
     let x = e.clientX + 10
@@ -310,7 +313,9 @@ export default function Diagram({ model }: Props) {
                     >
                       <td className="border px-2 py-1 text-center">{part.number}</td>
                       <td className="border px-2 py-1">
-                        {part.slug ? (
+                        {isUnknown(part) ? (
+                          <span className="text-gray-400" title="Артикул не определён">—</span>
+                        ) : part.slug ? (
                           <a href={`/parts/${part.slug}`} className="text-blue-700 hover:underline">
                             {part.partNumber}
                           </a>
@@ -396,9 +401,15 @@ export default function Diagram({ model }: Props) {
           className="fixed pointer-events-none z-[9999] bg-black text-white text-xs rounded px-3 py-2 shadow-lg"
         >
           <p><strong>Номер на схеме:</strong> {hoveredPart.number}</p>
-          <p><strong>Артикул:</strong> {hoveredPart.partNumber}</p>
-          {hoveredPart.name && <p><strong>Название:</strong> {hoveredPart.name}</p>}
-          <p><strong>Цена:</strong> {hoveredPart.price} руб.</p>
+          {isUnknown(hoveredPart) ? (
+            <p className="text-gray-300">Артикул не определён — уточняйте по телефону</p>
+          ) : (
+            <>
+              <p><strong>Артикул:</strong> {hoveredPart.partNumber}</p>
+              {hoveredPart.name && <p><strong>Название:</strong> {hoveredPart.name}</p>}
+              {hoveredPart.price > 0 && <p><strong>Цена:</strong> {Math.ceil(hoveredPart.price)} руб.</p>}
+            </>
+          )}
         </div>
       )}
     </div>
