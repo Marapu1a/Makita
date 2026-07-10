@@ -125,7 +125,9 @@ export default function Diagram({ model }: Props) {
       useEl.addEventListener('mouseenter', () => handleMouseEnter(part))
       useEl.addEventListener('mouseleave', handleMouseLeave)
     })
-  }, [svgContent, activeSlide])
+    // isMobile/showModal в зависимостях: контейнер переезжает между десктопной
+    // раскладкой и мобильной модалкой (remount) — оверлей нужно вставить заново
+  }, [svgContent, activeSlide, isMobile, showModal])
 
   // Highlight SVG or DIV when hoveredPart changes (via table hover or diagram hover)
   useEffect(() => {
@@ -190,7 +192,11 @@ export default function Diagram({ model }: Props) {
     tooltipRef.current.style.top  = `${y}px`
   }
 
-  const DiagramImage = ({ slide }: { slide: Slide }) => (
+  // Обычная функция, НЕ компонент: вызывается как renderDiagramArea(slide) —
+  // React видит стабильное дерево div'ов и не пересоздаёт его на каждый ререндер.
+  // Компонент, объявленный внутри компонента, имел бы новый identity каждый рендер
+  // → remount → императивно вставленный SVG-оверлей уничтожался при первом hover.
+  const renderDiagramArea = (slide: Slide) => (
     <div
       className="relative mx-auto"
       style={{
@@ -265,7 +271,7 @@ export default function Diagram({ model }: Props) {
         {/* Diagram — desktop */}
         {!isMobile && activeSlide && (
           <div className="flex-1 min-w-0">
-            <DiagramImage slide={activeSlide} />
+            {renderDiagramArea(activeSlide)}
           </div>
         )}
 
@@ -350,7 +356,7 @@ export default function Diagram({ model }: Props) {
             <button onClick={() => setShowModal(false)} className="text-xl leading-none">✕</button>
           </div>
           <div className="p-4">
-            <DiagramImage slide={activeSlide} />
+            {renderDiagramArea(activeSlide)}
             {slides.length > 1 && (
               <div className="flex gap-2 overflow-x-auto mt-3 pb-1">
                 {slides.map((slide, i) => (
