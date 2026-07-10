@@ -1,6 +1,7 @@
+import { API_BASE } from './env'
 import type { Category, ModelCard, ModelDetail } from './types'
 
-const BASE = import.meta.env.API_URL || 'http://localhost:5001'
+const BASE = API_BASE
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`)

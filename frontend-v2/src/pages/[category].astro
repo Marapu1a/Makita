@@ -1,4 +1,5 @@
 ---
+import { SITE_URL } from '../lib/env'
 import Layout from '../layouts/Layout.astro'
 import { getCategory } from '../lib/api'
 import pdfIndex from '../data/pdf-index.json'
@@ -29,7 +30,7 @@ const pdfModels = (pdfIndex as { name: string; path: string; category: string }[
     path: pdf.path.split('/').map((seg) => encodeURIComponent(seg)).join('/'),
   }))
 
-const SITE = import.meta.env.SITE_URL || 'https://makita-remont.ru'
+const SITE = SITE_URL
 const breadcrumbsLd = {
   '@context': 'https://schema.org',
   '@type': 'BreadcrumbList',

@@ -1,7 +1,8 @@
 ---
+import { API_BASE } from '../../lib/env'
 // 301-редирект со старого URL /categories/:id на новый /:slug
 const { id } = Astro.params
-const apiBase = import.meta.env.API_URL || 'http://localhost:5001'
+const apiBase = API_BASE
 
 try {
   const res = await fetch(`${apiBase}/api/v2/categories/by-id/${id}`)

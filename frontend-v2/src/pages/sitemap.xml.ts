@@ -1,9 +1,10 @@
+import { API_BASE, SITE_URL } from '../lib/env'
 import type { APIRoute } from 'astro'
 
-const SITE = import.meta.env.SITE_URL || 'https://makita-remont.ru'
+const SITE = SITE_URL
 
 export const GET: APIRoute = async () => {
-  const apiBase = import.meta.env.API_URL || 'http://localhost:5001'
+  const apiBase = API_BASE
   const [catRes, partsRes] = await Promise.all([
     fetch(`${apiBase}/api/v2/categories/sitemap`),
     fetch(`${apiBase}/api/v2/parts/sitemap`),

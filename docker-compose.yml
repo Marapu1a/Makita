@@ -68,7 +68,8 @@ services:
     ports:
       - "5002:5001"
     volumes:
-      - /var/www/images:/var/www/images:ro
+      # На проде картинки живут в /var/www/makita-public/images (их раздаёт хостовый nginx)
+      - /var/www/makita-public/images:/var/www/images:ro
     depends_on:
       - db
 
@@ -78,13 +79,11 @@ services:
     restart: always
     environment:
       - API_URL=http://backend-v2:5001
-      - PUBLIC_API_URL=
+      - SITE_URL=https://makita-remont.ru
       - HOST=0.0.0.0
       - PORT=4321
     ports:
       - "4321:4321"
-    volumes:
-      - /var/www/images:/var/www/images:ro
     depends_on:
       - backend-v2
 

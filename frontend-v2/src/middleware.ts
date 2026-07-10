@@ -1,3 +1,4 @@
+import { API_BASE } from './lib/env'
 import { defineMiddleware } from 'astro:middleware'
 
 // Прокси к backend-v2 (как nginx на старом сайте):
@@ -5,7 +6,7 @@ import { defineMiddleware } from 'astro:middleware'
 //  /api/*    — клиентские запросы (заказ, поиск)
 export const onRequest = defineMiddleware(async (ctx, next) => {
   const { pathname } = ctx.url
-  const apiBase = import.meta.env.API_URL || 'http://localhost:5001'
+  const apiBase = API_BASE
 
   if (pathname.startsWith('/images/')) {
     try {

@@ -1,4 +1,5 @@
 ---
+import { SITE_URL } from '../lib/env'
 import '../styles/global.css'
 import Header from '../components/Header'
 import TopBar from '../components/TopBar'
@@ -16,7 +17,7 @@ interface Props {
 const { title, description, noindex, sidebar = true, canonicalPath } = Astro.props
 const currentPath = Astro.url.pathname
 
-const SITE = import.meta.env.SITE_URL || 'https://makita-remont.ru'
+const SITE = SITE_URL
 const canonical = noindex ? null : `${SITE}${canonicalPath ?? currentPath}`
 
 // Корневые категории для сайдбара

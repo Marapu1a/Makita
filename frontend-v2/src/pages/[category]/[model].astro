@@ -1,4 +1,5 @@
 ---
+import { SITE_URL } from '../../lib/env'
 import Layout from '../../layouts/Layout.astro'
 import Diagram from '../../components/Diagram'
 import { getModel } from '../../lib/api'
@@ -20,7 +21,7 @@ if (model.category.slug && model.category.slug !== categorySlug) {
 const title = model.seoTitle || `${model.name} — взрыв-схема и запчасти Makita`
 const description = model.seoDescription || `Взрыв-схема ${model.name}. Оригинальные запчасти Makita с артикулами и ценами.`
 
-const SITE = import.meta.env.SITE_URL || 'https://makita-remont.ru'
+const SITE = SITE_URL
 const breadcrumbsLd = {
   '@context': 'https://schema.org',
   '@type': 'BreadcrumbList',
