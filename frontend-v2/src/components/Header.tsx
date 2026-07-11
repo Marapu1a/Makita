@@ -89,7 +89,7 @@ export function SearchBar() {
         />
         <button
           onClick={handleSearch}
-          className="px-5 bg-ink text-white text-sm font-medium uppercase tracking-wider hover:bg-makita transition-colors"
+          className="px-5 bg-makita text-white text-sm font-medium uppercase tracking-wider hover:bg-makita-dark transition-colors"
         >
           Найти
         </button>
@@ -143,14 +143,14 @@ export default function Header() {
 
   return (
     <header className="z-10">
-      <div className="bg-paper text-ink border-b border-ink">
+      <div className="bg-makita text-white">
         <div className="px-5 py-4 w-full flex flex-col lg:flex-row lg:items-center gap-3">
           {/* Лого + бургер */}
           <div className="flex items-center justify-between lg:justify-start w-full lg:w-auto lg:mr-10">
             <a href="/" className="flex items-baseline gap-2 group">
               <span className="font-medium tracking-tight select-none" aria-hidden="true">/////</span>
               <span className="text-xl font-medium uppercase tracking-wide">Снабтулс</span>
-              <span className="hidden sm:inline text-[11px] uppercase tracking-wider text-gray-500">
+              <span className="hidden sm:inline text-[11px] uppercase tracking-wider text-white/70">
                 запчасти Makita
               </span>
             </a>
@@ -178,7 +178,7 @@ export default function Header() {
               <a
                 key={to}
                 href={to}
-                className="py-2 lg:py-0 border-b border-transparent hover:border-ink transition-colors"
+                className="py-2 lg:py-0 border-b border-transparent hover:border-white transition-colors"
                 onClick={() => setMenuOpen(false)}
               >
                 {label}
@@ -188,7 +188,7 @@ export default function Header() {
               href="https://makita-snab.ru/"
               target="_blank"
               rel="noopener noreferrer"
-              className="py-2 lg:py-0 border-b border-transparent hover:border-ink transition-colors"
+              className="py-2 lg:py-0 border-b border-transparent hover:border-white transition-colors"
             >
               Инструменты&nbsp;→
             </a>
@@ -198,7 +198,7 @@ export default function Header() {
           <div className="lg:ml-auto">
             <a
               href="/cart"
-              className="inline-flex items-center gap-2 border border-ink px-4 py-2 text-sm font-medium uppercase tracking-wider hover:bg-ink hover:text-white transition-colors"
+              className="inline-flex items-center gap-2 border border-white px-4 py-2 text-sm font-medium uppercase tracking-wider hover:bg-white hover:text-makita transition-colors"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M3 3h2l2.4 12.2a1 1 0 0 0 1 .8h8.7a1 1 0 0 0 1-.8L20 7H6" />
@@ -207,7 +207,7 @@ export default function Header() {
               </svg>
               <span>Корзина</span>
               {totalItems > 0 && (
-                <span className="min-w-5 h-5 px-1 inline-flex items-center justify-center bg-makita text-white text-xs font-semibold">
+                <span className="min-w-5 h-5 px-1 inline-flex items-center justify-center bg-white text-makita text-xs font-semibold">
                   {totalItems}
                 </span>
               )}

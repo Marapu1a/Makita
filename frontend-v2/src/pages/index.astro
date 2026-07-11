@@ -13,21 +13,8 @@ const catImg = (name: string) =>
   title="Каталог запчастей Makita — взрыв-схемы и оригинальные детали"
   description="Интернет-магазин оригинальных запчастей Makita. Взрыв-схемы, артикулы, цены."
 >
-  <div class="relative">
-    <!-- Архитектурный фоновый слой: контурный текст за контентом -->
-    <div
-      aria-hidden="true"
-      class="pointer-events-none select-none absolute -top-8 left-0 right-0 overflow-hidden hidden md:block"
-    >
-      <span
-        class="block font-medium uppercase whitespace-nowrap leading-none text-transparent"
-        style="font-size: clamp(120px, 18vw, 280px); -webkit-text-stroke: 1px rgba(0,0,0,0.08);"
-      >
-        MAKITA
-      </span>
-    </div>
-
-    <div class="relative pt-4 md:pt-24">
+  <div>
+    <div class="pt-2">
       <h1 class="text-2xl md:text-4xl font-medium uppercase tracking-tight mb-8">
         Каталог запчастей
       </h1>
@@ -35,7 +22,7 @@ const catImg = (name: string) =>
         {categories.map((category) => (
           <a
             href={`/${category.slug}`}
-            class="group border-r border-b border-ink p-4 flex flex-col items-center gap-2 hover:bg-gray-50 transition-colors"
+            class="group border-r border-b border-ink p-4 flex flex-col items-center gap-2 hover:outline hover:outline-2 hover:-outline-offset-2 hover:outline-makita relative hover:z-10"
           >
             <img
               src={catImg(category.name)}
