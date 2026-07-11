@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import CartModal from './CartModal'
+import { fmtPrice } from '../lib/format'
 
 interface Slide {
   id: number
@@ -260,7 +261,7 @@ export default function Diagram({ model }: Props) {
               src={`${imgBase}/${slide.imagePath}`}
               alt={`Слайд ${slide.slideNumber}`}
               className={`cursor-pointer w-16 h-16 object-contain border-2 ${
-                i === activeSlideIndex ? 'border-blue-500' : 'border-gray-300'
+                i === activeSlideIndex ? 'border-makita' : 'border-gray-300 hover:border-ink'
               }`}
               onClick={() => setActiveSlideIndex(i)}
               loading="lazy"
@@ -281,74 +282,79 @@ export default function Diagram({ model }: Props) {
         {isMobile && (
           <button
             onClick={() => setShowModal(true)}
-            className="fixed bottom-4 right-4 z-50 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg"
+            className="fixed bottom-4 right-4 z-50 px-5 py-3 bg-ink text-white text-sm font-medium uppercase tracking-wider"
           >
             Показать схему
           </button>
         )}
 
         {/* Parts table — sticky: едет за скроллом, всегда в поле зрения, скроллится внутри себя */}
-        <div className="shrink-0 max-w-full md:max-w-[45%] md:sticky md:top-4 overflow-auto max-h-[calc(100vh-2rem)]">
-          <div className="overflow-x-auto border rounded">
-            <table className="table-auto border-collapse border text-sm">
-              <thead>
-                <tr className="bg-gray-200">
-                  <th className="border px-2 py-1">#</th>
-                  <th className="border px-3 py-1">Артикул</th>
-                  <th className="border px-2 py-1">Название</th>
-                  <th className="border px-2 py-1 text-center">Цена</th>
-                  <th className="border px-2 py-1 text-center">Есть</th>
-                  <th className="border px-2 py-1 text-center"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...filteredParts]
-                  .sort((a, b) => a.number - b.number)
-                  .map((part) => (
-                    <tr
-                      key={part.id}
-                      className="hover:bg-yellow-100 cursor-pointer odd:bg-gray-50"
-                      onMouseEnter={() => handleMouseEnter(part)}
-                      onMouseLeave={handleMouseLeave}
-                    >
-                      <td className="border px-2 py-1 text-center">{part.number}</td>
-                      <td className="border px-2 py-1">
-                        {isUnknown(part) ? (
-                          <span className="text-gray-400" title="Артикул не определён">—</span>
-                        ) : part.slug ? (
-                          <a href={`/parts/${part.slug}`} className="text-blue-700 hover:underline">
-                            {part.partNumber}
-                          </a>
-                        ) : (
-                          part.partNumber
-                        )}
-                      </td>
-                      <td className="border px-2 py-1">{part.name || '—'}</td>
-                      <td className="border px-2 py-1 text-center">
-                        {part.price > 0 ? `${Math.ceil(part.price)} ₽` : '—'}
-                      </td>
-                      <td className="border px-2 py-1 text-center">
-                        {part.availability ? 'Да' : 'Нет'}
-                      </td>
-                      <td className="border px-2 py-1 text-center">
-                        <button
-                          className={`px-2 py-1 rounded text-white leading-none ${
-                            part.availability
-                              ? 'bg-green-600 hover:bg-green-700'
-                              : 'bg-gray-400 cursor-not-allowed'
-                          }`}
-                          onClick={() => part.availability && setSelectedPart(part)}
-                          disabled={!part.availability}
-                          title="Добавить в корзину"
-                        >
-                          +
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="shrink-0 max-w-full md:max-w-[45%] md:sticky md:top-4 overflow-auto max-h-[calc(100vh-2rem)] border border-ink">
+          <table className="table-auto border-collapse text-sm w-full">
+            <thead className="sticky top-0 bg-paper z-10">
+              <tr className="text-[11px] uppercase tracking-wider text-gray-500">
+                <th className="border-b border-ink px-2 py-2 font-medium text-left">#</th>
+                <th className="border-b border-ink px-3 py-2 font-medium text-left">Артикул</th>
+                <th className="border-b border-ink px-2 py-2 font-medium text-left">Название</th>
+                <th className="border-b border-ink px-2 py-2 font-medium text-right">Цена</th>
+                <th className="border-b border-ink px-2 py-2 font-medium text-center">Есть</th>
+                <th className="border-b border-ink px-2 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...filteredParts]
+                .sort((a, b) => a.number - b.number)
+                .map((part) => (
+                  <tr
+                    key={part.id}
+                    className={`cursor-pointer border-b border-gray-200 transition-colors ${
+                      hoveredPart && hoveredPart.partNumber === part.partNumber
+                        ? 'bg-makita/10'
+                        : 'hover:bg-gray-50'
+                    }`}
+                    onMouseEnter={() => handleMouseEnter(part)}
+                    onMouseLeave={handleMouseLeave}
+                  >
+                    <td className="px-2 py-1.5 text-gray-500">{part.number}</td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      {isUnknown(part) ? (
+                        <span className="text-gray-400" title="Артикул не определён">—</span>
+                      ) : part.slug ? (
+                        <a href={`/parts/${part.slug}`} className="font-mono border-b border-gray-300 hover:border-makita hover:text-makita transition-colors">
+                          {part.partNumber}
+                        </a>
+                      ) : (
+                        <span className="font-mono">{part.partNumber}</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5">{part.name || '—'}</td>
+                    <td className="px-2 py-1.5 text-right whitespace-nowrap">
+                      {part.price > 0 ? fmtPrice(part.price) : '—'}
+                    </td>
+                    <td className="px-2 py-1.5 text-center">
+                      <span
+                        className={`inline-block w-2 h-2 ${part.availability ? 'bg-green-600' : 'bg-red-500'}`}
+                        title={part.availability ? 'В наличии' : 'Нет в наличии'}
+                      />
+                    </td>
+                    <td className="px-2 py-1.5 text-center">
+                      <button
+                        className={`w-7 h-7 leading-none border text-base transition-colors ${
+                          part.availability
+                            ? 'border-ink hover:bg-makita hover:border-makita hover:text-white'
+                            : 'border-gray-300 text-gray-300 cursor-not-allowed'
+                        }`}
+                        onClick={() => part.availability && setSelectedPart(part)}
+                        disabled={!part.availability}
+                        title="Добавить в корзину"
+                      >
+                        +
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -369,7 +375,7 @@ export default function Diagram({ model }: Props) {
                     src={`${imgBase}/${slide.imagePath}`}
                     alt=""
                     className={`border-2 rounded shrink-0 w-20 h-20 object-contain cursor-pointer ${
-                      i === activeSlideIndex ? 'border-blue-500' : 'border-gray-300'
+                      i === activeSlideIndex ? 'border-makita' : 'border-gray-300 hover:border-ink'
                     }`}
                     onClick={() => { setActiveSlideIndex(i); }}
                     loading="lazy"
@@ -407,7 +413,7 @@ export default function Diagram({ model }: Props) {
             <>
               <p><strong>Артикул:</strong> {hoveredPart.partNumber}</p>
               {hoveredPart.name && <p><strong>Название:</strong> {hoveredPart.name}</p>}
-              {hoveredPart.price > 0 && <p><strong>Цена:</strong> {Math.ceil(hoveredPart.price)} руб.</p>}
+              {hoveredPart.price > 0 && <p><strong>Цена:</strong> {fmtPrice(hoveredPart.price)}</p>}
             </>
           )}
         </div>

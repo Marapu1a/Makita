@@ -50,56 +50,59 @@ const breadcrumbsLd = {
   </Fragment>
 
   <Fragment slot="breadcrumbs">
-    <a href="/" class="hover:text-blue-600">Каталог</a>
+    <a href="/" class="hover:text-makita transition-colors">Каталог</a>
     <span class="mx-1">/</span>
     {data.parent && (
       <>
-        <a href={`/${data.parent.slug}`} class="hover:text-blue-600">{data.parent.name}</a>
+        <a href={`/${data.parent.slug}`} class="hover:text-makita transition-colors">{data.parent.name}</a>
         <span class="mx-1">/</span>
       </>
     )}
-    <span class="text-gray-700">{data.name}</span>
+    <span class="text-ink">{data.name}</span>
   </Fragment>
 
-  <div class="flex flex-1 flex-col items-center px-4">
-    <h1 class="text-2xl font-bold mb-6 self-start">{data.name}</h1>
+  <div>
+    <h1 class="text-2xl md:text-3xl font-medium uppercase tracking-tight mb-8">{data.name}</h1>
 
     {hasChildren ? (
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 w-full max-w-screen-lg">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 border-t border-l border-ink">
         {data.children!.map((child) => (
-          <a href={`/${child.slug}`}>
-            <div class="bg-white p-4 rounded-md shadow-md hover:shadow-lg transition flex flex-col items-center">
-              <img
-                src={catImg(child.name)}
-                alt={child.name}
-                loading="lazy"
-                class="h-24 sm:h-28 lg:h-32 object-contain mb-2"
-              />
-              <p class="text-sm font-semibold text-center break-words line-clamp-2">
-                {child.name}
-              </p>
-            </div>
+          <a
+            href={`/${child.slug}`}
+            class="group border-r border-b border-ink p-4 flex flex-col items-center gap-2 hover:bg-gray-50 transition-colors"
+          >
+            <img
+              src={catImg(child.name)}
+              alt={child.name}
+              loading="lazy"
+              class="h-24 sm:h-28 object-contain"
+            />
+            <p class="text-sm font-medium text-center break-words line-clamp-2 group-hover:text-makita transition-colors">
+              {child.name}
+            </p>
           </a>
         ))}
       </div>
     ) : (
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 w-full max-w-screen-lg">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 border-t border-l border-ink">
         {models.map((model) => (
-          <a href={`/${categorySlug}/${model.slug}`}>
-            <div class="bg-white p-4 rounded-md shadow-md hover:shadow-lg transition flex flex-col items-center">
-              <p class="text-sm font-semibold text-center break-words line-clamp-2">
-                {model.name}
-              </p>
-            </div>
+          <a
+            href={`/${categorySlug}/${model.slug}`}
+            class="border-r border-b border-ink px-4 py-5 flex items-center justify-center text-center hover:bg-gray-50 hover:text-makita transition-colors"
+          >
+            <span class="text-sm font-medium break-words line-clamp-2">{model.name}</span>
           </a>
         ))}
         {pdfModels.map((model) => (
-          <a href={model.path} target="_blank" rel="noopener noreferrer">
-            <div class="bg-white p-4 rounded-md shadow-md hover:bg-gray-100 flex flex-col items-center">
-              <p class="text-sm font-semibold text-blue-600 underline text-center break-words line-clamp-2">
-                {model.name}
-              </p>
-            </div>
+          <a
+            href={model.path}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="border-r border-b border-ink px-4 py-5 flex items-center justify-center text-center hover:bg-gray-50 transition-colors"
+          >
+            <span class="text-sm font-medium break-words line-clamp-2 border-b border-ink">
+              {model.name}&nbsp;→
+            </span>
           </a>
         ))}
       </div>

@@ -17,8 +17,10 @@ export default function AddToCart({ part, available }: Props) {
   return (
     <>
       <button
-        className={`px-6 py-2 rounded text-white font-semibold ${
-          available ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'
+        className={`px-8 py-3 text-sm font-medium uppercase tracking-wider transition-colors ${
+          available
+            ? 'bg-makita text-white hover:bg-makita-dark'
+            : 'border border-gray-300 text-gray-400 cursor-not-allowed'
         }`}
         onClick={() => available && setOpen(true)}
         disabled={!available}

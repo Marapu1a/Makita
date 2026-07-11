@@ -8,84 +8,125 @@ interface ModelHit {
   category: { name: string; slug: string | null }
 }
 
+interface PartHit {
+  part_number: string
+  name: string | null
+  price: number
+  availability: boolean
+  slug: string | null
+}
+
 export function SearchBar() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [suggestions, setSuggestions] = useState<Record<string, ModelHit[]>>({})
+  const [models, setModels] = useState<ModelHit[]>([])
+  const [parts, setParts] = useState<PartHit[]>([])
+  const [searched, setSearched] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
     clearTimeout(debounceRef.current)
-    if (!searchTerm.trim() || searchTerm.trim().length < 2) {
-      setSuggestions({})
+    const q = searchTerm.trim()
+    if (q.length < 2) {
+      setModels([])
+      setParts([])
+      setSearched(false)
       return
     }
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/v2/models/search?q=${encodeURIComponent(searchTerm.trim())}`)
-        const { data } = await res.json()
-        const grouped = (data as ModelHit[]).reduce<Record<string, ModelHit[]>>((acc, m) => {
-          if (!acc[m.category.name]) acc[m.category.name] = []
-          if (acc[m.category.name].length < 10) acc[m.category.name].push(m)
-          return acc
-        }, {})
-        setSuggestions(grouped)
+        const [mRes, pRes] = await Promise.all([
+          fetch(`/api/v2/models/search?q=${encodeURIComponent(q)}`),
+          fetch(`/api/v2/parts/search?q=${encodeURIComponent(q)}&limit=6`),
+        ])
+        const mData = mRes.ok ? (await mRes.json()).data : []
+        const pData = pRes.ok ? (await pRes.json()).data : []
+        setModels((mData as ModelHit[]).slice(0, 8))
+        setParts(pData as PartHit[])
+        setSearched(true)
       } catch {
-        setSuggestions({})
+        setModels([])
+        setParts([])
+        setSearched(true)
       }
     }, 250)
     return () => clearTimeout(debounceRef.current)
   }, [searchTerm])
 
-  const goTo = (m: ModelHit) => {
+  const goToModel = (m: ModelHit) => {
     window.location.href = `/${m.category.slug}/${m.slug}`
+  }
+  const goToPart = (p: PartHit) => {
+    if (p.slug) window.location.href = `/parts/${p.slug}`
   }
 
   const handleSearch = () => {
-    const all = Object.values(suggestions).flat()
-    const exact = all.find((m) => m.name.toLowerCase() === searchTerm.trim().toLowerCase())
-    if (exact) goTo(exact)
-    else if (all.length === 1) goTo(all[0])
+    const q = searchTerm.trim().toLowerCase()
+    const exactModel = models.find((m) => m.name.toLowerCase() === q)
+    if (exactModel) return goToModel(exactModel)
+    const exactPart = parts.find((p) => p.part_number.toLowerCase() === q)
+    if (exactPart) return goToPart(exactPart)
+    if (models.length === 1 && parts.length === 0) return goToModel(models[0])
+    if (parts.length === 1 && models.length === 0) return goToPart(parts[0])
   }
 
+  const open = searched
+  const empty = searched && models.length === 0 && parts.length === 0
+
+  const sectionLabel = 'px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-gray-500 border-b border-gray-200'
+  const row = 'px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm text-ink flex justify-between gap-3'
+
   return (
-    <div className="relative w-full lg:w-80">
-      <div className="flex">
+    <div className="relative w-full lg:w-96">
+      <div className="flex border border-ink">
         <input
           type="text"
-          placeholder="Поиск по моделям..."
+          placeholder="Модель или артикул…"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          onBlur={() => setTimeout(() => setSuggestions({}), 200)}
+          onBlur={() => setTimeout(() => setSearched(false), 200)}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          className="p-2 w-full bg-cyan-900 text-white placeholder-cyan-300 border border-white rounded-l"
+          className="px-3 py-2 w-full bg-white text-ink placeholder-gray-400 outline-none focus:bg-gray-50"
         />
         <button
           onClick={handleSearch}
-          className="px-4 bg-cyan-600 text-white rounded-r hover:bg-cyan-500 transition"
+          className="px-5 bg-ink text-white text-sm font-medium uppercase tracking-wider hover:bg-makita transition-colors"
         >
           Найти
         </button>
       </div>
-      {Object.keys(suggestions).length > 0 && (
-        <ul className="absolute top-full left-0 w-full bg-[#1e2a30] border border-cyan-700 shadow-xl max-h-60 overflow-auto rounded-md z-50">
-          {Object.entries(suggestions).map(([categoryName, models]) => (
-            <li key={categoryName}>
-              <div className="px-3 py-1 text-xs text-cyan-400 uppercase bg-[#2b3b42] border-b border-cyan-700">
-                {categoryName}
-              </div>
+      {open && (
+        <div className="absolute top-full left-0 w-full mt-px bg-white border border-ink max-h-80 overflow-auto z-50">
+          {empty && (
+            <div className="px-3 py-4 text-sm text-gray-500">
+              Ничего не найдено по запросу «{searchTerm.trim()}»
+            </div>
+          )}
+          {models.length > 0 && (
+            <div>
+              <div className={sectionLabel}>Модели</div>
               {models.map((m) => (
-                <div
-                  key={m.id}
-                  className="p-2 hover:bg-gray-600 hover:text-white cursor-pointer text-sm text-gray-200"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => goTo(m)}
-                >
-                  {m.name}
+                <div key={m.id} className={row} onMouseDown={(e) => e.preventDefault()} onClick={() => goToModel(m)}>
+                  <span className="font-medium">{m.name}</span>
+                  <span className="text-gray-400 truncate">{m.category.name}</span>
                 </div>
               ))}
-            </li>
-          ))}
-        </ul>
+            </div>
+          )}
+          {parts.length > 0 && (
+            <div>
+              <div className={sectionLabel}>Детали</div>
+              {parts.map((p) => (
+                <div key={p.part_number} className={row} onMouseDown={(e) => e.preventDefault()} onClick={() => goToPart(p)}>
+                  <span>
+                    <span className="font-mono font-medium">{p.part_number}</span>
+                    {p.name && <span className="text-gray-500"> — {p.name}</span>}
+                  </span>
+                  {p.price > 0 && <span className="whitespace-nowrap text-gray-500">{Math.round(p.price).toLocaleString('ru-RU')} ₽</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
@@ -101,40 +142,45 @@ export default function Header() {
   const totalItems = mounted ? cartItems.reduce((sum, item) => sum + item.quantity, 0) : 0
 
   return (
-    <header className="border-b shadow-lg z-10">
-      <div
-        className="relative px-4 py-4 bg-cyan-800 text-white min-h-[100px]"
-        style={{
-          backgroundImage: "url('/images/header2.jpg')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center 24%',
-        }}
-      >
-        <div className="absolute inset-0 bg-black/30" />
-
-        <div className="relative z-10 w-full flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+    <header className="z-10">
+      <div className="bg-paper text-ink border-b border-ink">
+        <div className="px-5 py-4 w-full flex flex-col lg:flex-row lg:items-center gap-3">
           {/* Лого + бургер */}
-          <div className="flex items-center justify-between lg:justify-start lg:space-x-6 w-full lg:w-auto">
-            <a href="/" className="flex items-center">
-              <img src="/images/logo.webp" alt="Makita Logo" className="h-12 object-contain mr-4" />
+          <div className="flex items-center justify-between lg:justify-start w-full lg:w-auto lg:mr-10">
+            <a href="/" className="flex items-baseline gap-2 group">
+              <span className="font-medium tracking-tight select-none" aria-hidden="true">/////</span>
+              <span className="text-xl font-medium uppercase tracking-wide">Снабтулс</span>
+              <span className="hidden sm:inline text-[11px] uppercase tracking-wider text-gray-500">
+                запчасти Makita
+              </span>
             </a>
-            <button className="lg:hidden text-white text-3xl leading-none" onClick={() => setMenuOpen((p) => !p)}>
-              ≡
+            <button
+              className="lg:hidden p-1"
+              aria-label="Меню"
+              onClick={() => setMenuOpen((p) => !p)}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M3 6h18M3 12h18M3 18h18" />
+              </svg>
             </button>
           </div>
 
           {/* Навигация */}
           <nav
-            className={`${menuOpen ? 'flex' : 'hidden'} flex-col lg:flex lg:flex-row lg:items-center lg:space-x-4
-              text-base text-white text-center mt-2 lg:mt-0
-              lg:bg-transparent bg-cyan-900/90 p-4 lg:p-0 rounded-lg shadow-lg lg:shadow-none`}
+            className={`${menuOpen ? 'flex' : 'hidden'} flex-col lg:flex lg:flex-row lg:items-center
+              gap-1 lg:gap-8 text-sm font-medium uppercase tracking-wider`}
           >
             {[
               { to: '/info', label: 'Информация' },
               { to: '/', label: 'Каталог' },
               { to: '/contacts', label: 'Контакты' },
             ].map(({ to, label }) => (
-              <a key={to} href={to} className="py-2 px-4 hover:bg-cyan-700 rounded-lg transition-all" onClick={() => setMenuOpen(false)}>
+              <a
+                key={to}
+                href={to}
+                className="py-2 lg:py-0 border-b border-transparent hover:border-ink transition-colors"
+                onClick={() => setMenuOpen(false)}
+              >
                 {label}
               </a>
             ))}
@@ -142,21 +188,29 @@ export default function Header() {
               href="https://makita-snab.ru/"
               target="_blank"
               rel="noopener noreferrer"
-              className="group py-2 px-4 hover:bg-cyan-700 rounded-lg transition-all"
+              className="py-2 lg:py-0 border-b border-transparent hover:border-ink transition-colors"
             >
-              <span className="group-hover:hidden">Инструменты</span>
-              <span className="hidden group-hover:inline">makita-snab.ru</span>
+              Инструменты&nbsp;→
             </a>
           </nav>
 
           {/* Корзина */}
-          <div className="mt-2 lg:mt-0 lg:ml-auto">
+          <div className="lg:ml-auto">
             <a
               href="/cart"
-              className="flex items-center space-x-2 border border-white bg-black/20 px-3 py-2 rounded hover:bg-black/30 transition w-fit"
+              className="inline-flex items-center gap-2 border border-ink px-4 py-2 text-sm font-medium uppercase tracking-wider hover:bg-ink hover:text-white transition-colors"
             >
-              <span>🛒</span>
-              <span>В корзине {totalItems} т.</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M3 3h2l2.4 12.2a1 1 0 0 0 1 .8h8.7a1 1 0 0 0 1-.8L20 7H6" />
+                <circle cx="9.5" cy="20" r="1.2" />
+                <circle cx="17.5" cy="20" r="1.2" />
+              </svg>
+              <span>Корзина</span>
+              {totalItems > 0 && (
+                <span className="min-w-5 h-5 px-1 inline-flex items-center justify-center bg-makita text-white text-xs font-semibold">
+                  {totalItems}
+                </span>
+              )}
             </a>
           </div>
         </div>

@@ -2,6 +2,7 @@
 import { API_BASE, SITE_URL } from '../../lib/env'
 import Layout from '../../layouts/Layout.astro'
 import AddToCart from '../../components/AddToCart'
+import { fmtPrice } from '../../lib/format'
 
 interface UsedIn {
   modelId: number
@@ -28,6 +29,35 @@ try {
 const usedIn: UsedIn[] = part.usedIn
 const displayName = part.name || `Деталь ${part.partNumber}`
 
+// Группировка вхождений: одна строка на модель, позиции списком
+interface GroupedModel {
+  modelName: string
+  modelSlug: string | null
+  category: string
+  categorySlug: string | null
+  positions: number[]
+}
+const groupedModels: GroupedModel[] = []
+{
+  const byModel = new Map<number, GroupedModel>()
+  for (const u of usedIn) {
+    let g = byModel.get(u.modelId)
+    if (!g) {
+      g = {
+        modelName: u.modelName,
+        modelSlug: u.modelSlug,
+        category: u.category,
+        categorySlug: u.categorySlug,
+        positions: [],
+      }
+      byModel.set(u.modelId, g)
+      groupedModels.push(g)
+    }
+    g.positions.push(u.number)
+  }
+  for (const g of groupedModels) g.positions.sort((a, b) => a - b)
+}
+
 const title = part.seoTitle
   || `${displayName} (${part.partNumber}) — купить оригинальную запчасть Makita`
 const description = part.seoDescription
@@ -37,7 +67,7 @@ const description = part.seoDescription
 const h1 = part.h1 || `${displayName} — артикул ${part.partNumber}`
 
 const modelsWord = (() => {
-  const n = usedIn.length
+  const n = groupedModels.length
   if ([11, 12, 13, 14].includes(n % 100)) return 'моделях'
   if (n % 10 === 1) return 'модели'
   return 'моделях'
@@ -83,28 +113,27 @@ const breadcrumbsLd = {
   </Fragment>
 
   <Fragment slot="breadcrumbs">
-    <a href="/" class="hover:text-blue-600">Каталог</a>
+    <a href="/" class="hover:text-makita transition-colors">Каталог</a>
     <span class="mx-1">/</span>
-    <span class="text-gray-700">Артикул {part.partNumber}</span>
+    <span class="text-ink">Артикул {part.partNumber}</span>
   </Fragment>
 
   <div class="max-w-4xl">
-    <h1 class="text-2xl font-bold mb-4">{h1}</h1>
+    <h1 class="text-2xl md:text-3xl font-medium tracking-tight mb-6">{h1}</h1>
 
-    <div class="bg-white rounded-md shadow-md p-6 mb-8 flex flex-col sm:flex-row sm:items-center gap-6">
+    <div class="border border-ink p-6 mb-10 flex flex-col sm:flex-row sm:items-center gap-6">
       <div class="flex-1">
-        <p class="text-gray-600 mb-1">
-          Артикул: <span class="font-mono font-semibold text-gray-900">{part.partNumber}</span>
+        <p class="text-[11px] uppercase tracking-wider text-gray-500 mb-1">
+          Артикул
         </p>
-        {part.name && <p class="text-lg font-semibold mb-1">{part.name}</p>}
-        <p class="mb-1">
-          Наличие:{' '}
-          {part.availability
-            ? <span class="text-green-600 font-semibold">в наличии</span>
-            : <span class="text-red-500 font-semibold">нет в наличии</span>}
+        <p class="font-mono text-lg font-medium mb-3">{part.partNumber}</p>
+        {part.name && <p class="text-lg mb-3">{part.name}</p>}
+        <p class="mb-2 flex items-center gap-2 text-sm">
+          <span class={`inline-block w-2 h-2 ${part.availability ? 'bg-green-600' : 'bg-red-500'}`} />
+          {part.availability ? 'В наличии' : 'Нет в наличии'}
         </p>
         {part.price > 0 && (
-          <p class="text-2xl font-bold">{Math.ceil(part.price).toLocaleString('ru-RU')} ₽</p>
+          <p class="text-3xl font-medium">{fmtPrice(part.price)}</p>
         )}
       </div>
       <AddToCart
@@ -119,32 +148,35 @@ const breadcrumbsLd = {
       />
     </div>
 
-    {part.content && <div class="prose max-w-none mb-8" set:html={part.content} />}
+    {part.content && <div class="prose max-w-none mb-10" set:html={part.content} />}
 
-    {usedIn.length > 0 && (
+    {groupedModels.length > 0 && (
       <section>
-        <h2 class="text-xl font-semibold mb-3">
-          Используется в {usedIn.length} {modelsWord}
+        <h2 class="text-[11px] font-medium uppercase tracking-widest text-gray-500 mb-3">
+          Используется в {groupedModels.length} {modelsWord}
         </h2>
-        <div class="overflow-x-auto border rounded">
+        <div class="overflow-x-auto border border-ink">
           <table class="min-w-full border-collapse text-sm">
             <thead>
-              <tr class="bg-gray-200 text-left">
-                <th class="border px-3 py-1">Модель</th>
-                <th class="border px-3 py-1">Категория</th>
-                <th class="border px-3 py-1 text-center">Позиция на схеме</th>
+              <tr class="text-left text-[11px] uppercase tracking-wider text-gray-500">
+                <th class="border-b border-ink px-3 py-2 font-medium">Модель</th>
+                <th class="border-b border-ink px-3 py-2 font-medium">Категория</th>
+                <th class="border-b border-ink px-3 py-2 font-medium">Позиции на схеме</th>
               </tr>
             </thead>
             <tbody>
-              {usedIn.map((u) => (
-                <tr class="odd:bg-gray-50 hover:bg-gray-100">
-                  <td class="border px-3 py-1">
-                    <a href={`/${u.categorySlug}/${u.modelSlug}`} class="text-blue-700 hover:underline font-semibold">
-                      {u.modelName}
+              {groupedModels.map((g) => (
+                <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                  <td class="px-3 py-2">
+                    <a
+                      href={`/${g.categorySlug}/${g.modelSlug}`}
+                      class="font-medium border-b border-gray-300 hover:border-makita hover:text-makita transition-colors"
+                    >
+                      {g.modelName}
                     </a>
                   </td>
-                  <td class="border px-3 py-1">{u.category}</td>
-                  <td class="border px-3 py-1 text-center">{u.number}</td>
+                  <td class="px-3 py-2 text-gray-500">{g.category}</td>
+                  <td class="px-3 py-2">{g.positions.join(', ')}</td>
                 </tr>
               ))}
             </tbody>

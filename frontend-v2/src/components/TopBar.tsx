@@ -4,48 +4,38 @@ export default function TopBar({ currentPath }: { currentPath: string }) {
   const isAtRoot = currentPath === '/'
 
   return (
-    <div className="bg-cyan-800 text-white flex flex-col md:flex-row md:items-center gap-4 md:gap-0">
-      {/* Поиск */}
-      <div className="flex-1 relative p-4 flex items-center">
-        <div className="w-full md:w-2/3">
+    <div className="bg-paper text-ink border-b border-ink">
+      <div className="px-5 py-3 flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
+        {/* Поиск */}
+        <div className="flex-1 max-w-xl">
           <SearchBar />
         </div>
-      </div>
 
-      {/* Назад к каталогу */}
-      <div className="md:ml-auto">
-        {isAtRoot ? (
-          <button
-            className="px-4 py-2 mx-4 rounded-sm bg-gray-500 text-gray-300 cursor-not-allowed"
-            disabled
-          >
-            Назад к каталогу
-          </button>
-        ) : (
+        {/* Назад к каталогу */}
+        {!isAtRoot && (
           <a
             href="/"
-            className="inline-block px-4 py-2 mx-4 rounded-sm bg-cyan-900 text-white border border-white hover:bg-cyan-600 transition-all duration-100"
+            className="text-sm font-medium uppercase tracking-wider border-b border-transparent hover:border-ink transition-colors whitespace-nowrap"
           >
-            Назад к каталогу
+            ← Каталог
           </a>
         )}
-      </div>
 
-      {/* Разделитель */}
-      <div className="hidden md:block h-6 w-px bg-white opacity-50" />
-
-      {/* Контакты */}
-      <div className="p-4">
-        <div className="flex flex-col md:flex-row md:items-center md:space-x-4 text-sm">
-          <div className="flex items-center space-x-1">
-            <span>✉️</span>
-            <span>makita-snab@mail.ru</span>
-          </div>
-          <div className="hidden md:block h-6 w-px bg-white opacity-50" />
-          <div className="flex items-center space-x-1">
-            <span>📞</span>
-            <span>+7 (495) 215-02-99</span>
-          </div>
+        {/* Контакты */}
+        <div className="md:ml-auto flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm">
+          <a href="mailto:makita-snab@mail.ru" className="inline-flex items-center gap-2 hover:text-makita transition-colors">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="3" y="5" width="18" height="14" />
+              <path d="m3 7 9 6 9-6" />
+            </svg>
+            makita-snab@mail.ru
+          </a>
+          <a href="tel:+74952150299" className="inline-flex items-center gap-2 font-medium hover:text-makita transition-colors whitespace-nowrap">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" />
+            </svg>
+            +7 (495) 215-02-99
+          </a>
         </div>
       </div>
     </div>

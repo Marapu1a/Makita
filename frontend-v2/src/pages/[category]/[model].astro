@@ -43,11 +43,11 @@ const breadcrumbsLd = {
   </Fragment>
 
   <Fragment slot="breadcrumbs">
-    <a href="/" class="hover:text-blue-600">Каталог</a>
+    <a href="/" class="hover:text-makita transition-colors">Каталог</a>
     <span class="mx-1">/</span>
-    <a href={`/${categorySlug}`} class="hover:text-blue-600">{model.category.name}</a>
+    <a href={`/${categorySlug}`} class="hover:text-makita transition-colors">{model.category.name}</a>
     <span class="mx-1">/</span>
-    <span class="text-gray-700">{model.name}</span>
+    <span class="text-ink">{model.name}</span>
   </Fragment>
 
   <h1 class="text-xl font-bold mb-4">{model.h1 || model.name}</h1>
