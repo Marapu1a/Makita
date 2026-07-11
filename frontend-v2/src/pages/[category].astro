@@ -65,11 +65,11 @@ const breadcrumbsLd = {
     <h1 class="text-2xl md:text-3xl font-medium uppercase tracking-tight mb-8">{data.name}</h1>
 
     {hasChildren ? (
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 border-t border-l border-ink">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {data.children!.map((child) => (
           <a
             href={`/${child.slug}`}
-            class="group border-r border-b border-ink p-4 flex flex-col items-center gap-2 hover:outline hover:outline-2 hover:-outline-offset-2 hover:outline-makita relative hover:z-10"
+            class="group tile p-4 flex flex-col items-center gap-2"
           >
             <img
               src={catImg(child.name)}
@@ -84,11 +84,11 @@ const breadcrumbsLd = {
         ))}
       </div>
     ) : (
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 border-t border-l border-ink">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
         {models.map((model) => (
           <a
             href={`/${categorySlug}/${model.slug}`}
-            class="border-r border-b border-ink px-4 py-5 flex items-center justify-center text-center hover:text-makita hover:outline hover:outline-2 hover:-outline-offset-2 hover:outline-makita relative hover:z-10"
+            class="tile px-4 py-5 flex items-center justify-center text-center hover:text-makita"
           >
             <span class="text-sm font-medium break-words line-clamp-2">{model.name}</span>
           </a>
@@ -98,7 +98,7 @@ const breadcrumbsLd = {
             href={model.path}
             target="_blank"
             rel="noopener noreferrer"
-            class="border-r border-b border-ink px-4 py-5 flex items-center justify-center text-center hover:outline hover:outline-2 hover:-outline-offset-2 hover:outline-makita relative hover:z-10"
+            class="tile px-4 py-5 flex items-center justify-center text-center"
           >
             <span class="text-sm font-medium break-words line-clamp-2 border-b border-ink">
               {model.name}&nbsp;→

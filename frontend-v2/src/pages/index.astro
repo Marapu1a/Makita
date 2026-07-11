@@ -18,11 +18,11 @@ const catImg = (name: string) =>
       <h1 class="text-2xl md:text-4xl font-medium uppercase tracking-tight mb-8">
         Каталог запчастей
       </h1>
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 border-t border-l border-ink">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {categories.map((category) => (
           <a
             href={`/${category.slug}`}
-            class="group border-r border-b border-ink p-4 flex flex-col items-center gap-2 hover:outline hover:outline-2 hover:-outline-offset-2 hover:outline-makita relative hover:z-10"
+            class="group tile p-4 flex flex-col items-center gap-2"
           >
             <img
               src={catImg(category.name)}
