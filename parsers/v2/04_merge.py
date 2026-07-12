@@ -116,7 +116,8 @@ def merge_model(cur, record, schema, cat_id, dry):
     number_to_slide = {} # номер позиции -> (slide_id, координаты|None)
     model_fs = sanitize(name)
     for s in slides:
-        has_overlay = s['type'] == 'svg' and bool(s.get('files', {}).get('overlay'))
+        files = s.get('files', {})
+        has_overlay = s['type'] == 'svg' and bool(files.get('overlay') or files.get('overlay_old'))
         cur.execute("""
             INSERT INTO slides (model_id, slide_number, image_path, image_width, image_height,
                                 has_svg, createdat, updatedat)

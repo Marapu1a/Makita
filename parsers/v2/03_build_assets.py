@@ -176,17 +176,38 @@ def main():
             if slide['type'] == 'svg':
                 draw = slide['files'].get('drawing')
                 overlay = slide['files'].get('overlay')
-                if draw and not os.path.exists(webp_path):
+                overlay_old = slide['files'].get('overlay_old')
+                bg_url = slide.get('background_url')
+
+                # фон: приоритет — растровый png старого формата, иначе рендер рисунка
+                if bg_url and not os.path.exists(webp_path):
+                    raw = download(bg_url)
+                    img = Image.open(io.BytesIO(raw))
+                    if img.mode in ('RGBA', 'LA', 'P'):
+                        # прозрачность кладём на белый
+                        img = img.convert('RGBA')
+                        white = Image.new('RGBA', img.size, (255, 255, 255, 255))
+                        img = Image.alpha_composite(white, img)
+                    img = img.convert('L').point(lambda p: 255 if p > WM_THRESHOLD else p)
+                    img.save(webp_path, 'WEBP', quality=82, method=6)
+                elif draw and not os.path.exists(webp_path):
                     manifest.append({
                         'svg': os.path.join(FILES_DIR, draw),
                         'out': webp_path,
                         'width': RENDER_WIDTH,
                     })
+
                 if overlay:
                     with open(os.path.join(FILES_DIR, overlay), encoding='utf-8') as f:
                         converted = convert_overlay(f.read())
                     with open(os.path.join(out_folder, f'{model}_{n}.svg'), 'w', encoding='utf-8') as f:
                         f.write(converted)
+                elif overlay_old:
+                    # старый формат — это уже наш формат, копируем как есть
+                    with open(os.path.join(FILES_DIR, overlay_old), encoding='utf-8') as f:
+                        content = f.read()
+                    with open(os.path.join(out_folder, f'{model}_{n}.svg'), 'w', encoding='utf-8') as f:
+                        f.write(content)
                 stats['svg'] += 1
 
             elif slide['type'] == 'div':

@@ -105,10 +105,18 @@ def parse_div_slide(slide):
 
 
 VIEWBOX = re.compile(r'viewBox="([\d. ]+)"', re.IGNORECASE)
+FIG_BG = re.compile(r'id="fig_image"[^>]*style="([^"]*)"')
+BG_URLS = re.compile(r'url\((?:&quot;|"|\')?([^)&"\']+)(?:&quot;|"|\')?\)')
+BG_SIZE = re.compile(r'background-size:\s*([\d.]+)px\s+([\d.]+)px')
 
 
 def parse_svg_slide(slide_html: str, model_name: str, n: int):
-    """Слайд с двумя svg: layer2 (интерактив) + рисунок."""
+    """
+    Слайд с svg. Три варианта:
+      - НОВЫЙ формат: два svg — рисунок + layer2 (интерактив, data-id)
+      - СТАРЫЙ формат: один svg-оверлей (symbol/use #refN.1, уже наш формат!)
+        + растровый фон в background-image у #fig_image
+    """
     svg_starts = [m.start() for m in re.finditer(r'<svg', slide_html)]
     svgs = []
     for s in svg_starts:
@@ -119,8 +127,11 @@ def parse_svg_slide(slide_html: str, model_name: str, n: int):
     if not svgs:
         return None
 
-    overlay = next((s for s in svgs if 'class="layer2"' in s[:300]), None)
-    drawing = next((s for s in svgs if 'class="layer2"' not in s[:300]), None)
+    overlay_new = next((s for s in svgs if 'class="layer2"' in s[:300]), None)
+    overlay_old = next((s for s in svgs if '<symbol id="ref' in s[:3000]), None)
+    drawing = next(
+        (s for s in svgs if s is not overlay_new and s is not overlay_old), None
+    )
 
     vb = VIEWBOX.search(svgs[0])
     width = height = None
@@ -128,6 +139,18 @@ def parse_svg_slide(slide_html: str, model_name: str, n: int):
         parts = vb.group(1).split()
         if len(parts) == 4:
             width, height = float(parts[2]), float(parts[3])
+
+    # фон старого формата: png из background-image у #fig_image
+    background_url = None
+    m = FIG_BG.search(slide_html)
+    if m:
+        urls = BG_URLS.findall(m.group(1))
+        if urls:
+            # два url (_M и полный) — берём последний (полноразмерный)
+            background_url = urllib.parse.urljoin(BASE, urls[-1])
+        size = BG_SIZE.search(m.group(1))
+        if size:
+            width, height = float(size.group(1)), float(size.group(2))
 
     os.makedirs(FILES_DIR, exist_ok=True)
     files = {}
@@ -137,20 +160,27 @@ def parse_svg_slide(slide_html: str, model_name: str, n: int):
         with open(p, 'w', encoding='utf-8') as f:
             f.write(drawing)
         files['drawing'] = os.path.basename(p)
-    if overlay:
+
+    numbers = []
+    if overlay_new:
         p = os.path.join(FILES_DIR, f'{safe}_{n}_overlay.svg')
         with open(p, 'w', encoding='utf-8') as f:
-            f.write(overlay)
+            f.write(overlay_new)
         files['overlay'] = os.path.basename(p)
-        numbers = sorted({int(x) for x in re.findall(r'id="(\d+)"', overlay)})
-    else:
-        numbers = []
+        numbers = sorted({int(x) for x in re.findall(r'data-id="(\d+)"', overlay_new)})
+    elif overlay_old:
+        p = os.path.join(FILES_DIR, f'{safe}_{n}_overlay_old.svg')
+        with open(p, 'w', encoding='utf-8') as f:
+            f.write(overlay_old)
+        files['overlay_old'] = os.path.basename(p)
+        numbers = sorted({int(x) for x in re.findall(r'xlink:href="#ref(\d+)', overlay_old)})
 
     return {
         'type': 'svg',
         'width': width,
         'height': height,
         'files': files,
+        'background_url': background_url,
         'zone_numbers': numbers,
     }
 
