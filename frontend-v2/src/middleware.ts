@@ -10,16 +10,29 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
 
   if (pathname.startsWith('/images/')) {
     try {
-      const res = await fetch(`${apiBase}${pathname}${ctx.url.search}`)
+      // Пробрасываем условные заголовки: браузер кэширует, но перепроверяет
+      // свежесть (иначе fetch() SVG-оверлеев не обновить даже Ctrl+F5)
+      const condHeaders: Record<string, string> = {}
+      const inm = ctx.request.headers.get('if-none-match')
+      const ims = ctx.request.headers.get('if-modified-since')
+      if (inm) condHeaders['if-none-match'] = inm
+      if (ims) condHeaders['if-modified-since'] = ims
+
+      const res = await fetch(`${apiBase}${pathname}${ctx.url.search}`, { headers: condHeaders })
+      if (res.status === 304) return new Response(null, { status: 304 })
       if (!res.ok) return new Response(null, { status: res.status })
+
+      const headers: Record<string, string> = {
+        'content-type': res.headers.get('content-type') || 'application/octet-stream',
+        'cache-control': 'public, no-cache', // кэшируй, но валидируй по etag
+      }
+      const etag = res.headers.get('etag')
+      const lm = res.headers.get('last-modified')
+      if (etag) headers['etag'] = etag
+      if (lm) headers['last-modified'] = lm
+
       const body = await res.arrayBuffer()
-      return new Response(body, {
-        status: res.status,
-        headers: {
-          'content-type': res.headers.get('content-type') || 'application/octet-stream',
-          'cache-control': 'public, max-age=86400',
-        },
-      })
+      return new Response(body, { status: res.status, headers })
     } catch {
       return new Response(null, { status: 502 })
     }
