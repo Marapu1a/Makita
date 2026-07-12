@@ -79,12 +79,14 @@ def category_mapping():
     result.setdefault('generatory', 'Генераторы')
     result.setdefault('kompressory', 'Компрессоры')
     result.setdefault('podmetalnye-mashiny', 'Подметальные машины')
+    result.setdefault('rajdery', 'Райдеры')
     return result
 
 
 # ─── Конвертация оверлея в старый формат ────────────────────
 
-ZONE_PATH = re.compile(r'<path([^>]*?)\bid="(\d+)"([^>]*?)/>')
+# у зон в layer2 номер лежит в data-id (не в id!)
+ZONE_PATH = re.compile(r'<path([^>]*?)\bdata-id="(\d+)"([^>]*?)/>')
 SVG_ROOT = re.compile(r'<svg[^>]*>', re.IGNORECASE)
 
 
@@ -103,6 +105,7 @@ def convert_overlay(overlay_svg: str) -> str:
     defs, uses = [], []
     for m in ZONE_PATH.finditer(overlay_svg):
         pre, num, post = m.groups()
+        # data-id="N" превращается в честный id="refN" — на него ссылается <use>
         defs.append(f'<path{pre}id="ref{num}"{post}/>')
         uses.append(
             f'<use xlink:href="#ref{num}" '
