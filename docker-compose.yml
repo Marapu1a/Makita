@@ -12,7 +12,8 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     ports:
-      - "5432:5432"
+      # только localhost: наружу порт БД торчать не должен (сканеры брутфорсят 5432)
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -44,7 +45,8 @@ services:
     container_name: my_admin_frontend
     restart: always
     ports:
-      - "8081:80"
+      # только localhost: наружу отдаёт хостовый nginx (admin.makita-remont.ru)
+      - "127.0.0.1:8081:80"
     depends_on:
       - backend-v2
 
@@ -56,7 +58,8 @@ services:
     env_file:
       - ./backend-v2/.env.production
     ports:
-      - "5002:5001"
+      # только localhost: браузерный трафик к API идёт через прокси frontend-v2/admin-frontend
+      - "127.0.0.1:5002:5001"
     volumes:
       # На проде картинки живут в /var/www/makita-public/images (их раздаёт хостовый nginx)
       - /var/www/makita-public/images:/var/www/images:ro
@@ -75,7 +78,8 @@ services:
       - HOST=0.0.0.0
       - PORT=4321
     ports:
-      - "4321:4321"
+      # только localhost: наружу отдаёт хостовый nginx (makita-remont.ru)
+      - "127.0.0.1:4321:4321"
     depends_on:
       - backend-v2
 

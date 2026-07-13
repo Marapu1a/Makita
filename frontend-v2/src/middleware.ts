@@ -8,11 +8,25 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   const { pathname } = ctx.url
   const apiBase = API_BASE
 
+  // Реальный IP посетителя — иначе rate-limit бэкенда видит все запросы
+  // как один IP прокси и банит посетителей скопом
+  let clientIp = ''
+  try {
+    clientIp = ctx.clientAddress
+  } catch {
+    /* clientAddress недоступен при пререндере */
+  }
+  const fwdHeaders: Record<string, string> = {}
+  if (clientIp) {
+    fwdHeaders['x-forwarded-for'] = clientIp
+    fwdHeaders['x-forwarded-proto'] = ctx.url.protocol.replace(':', '')
+  }
+
   if (pathname.startsWith('/images/')) {
     try {
       // Пробрасываем условные заголовки: браузер кэширует, но перепроверяет
       // свежесть (иначе fetch() SVG-оверлеев не обновить даже Ctrl+F5)
-      const condHeaders: Record<string, string> = {}
+      const condHeaders: Record<string, string> = { ...fwdHeaders }
       const inm = ctx.request.headers.get('if-none-match')
       const ims = ctx.request.headers.get('if-modified-since')
       if (inm) condHeaders['if-none-match'] = inm
@@ -42,7 +56,10 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     try {
       const res = await fetch(`${apiBase}${pathname}${ctx.url.search}`, {
         method: ctx.request.method,
-        headers: { 'content-type': ctx.request.headers.get('content-type') || 'application/json' },
+        headers: {
+          'content-type': ctx.request.headers.get('content-type') || 'application/json',
+          ...fwdHeaders,
+        },
         body: ['GET', 'HEAD'].includes(ctx.request.method) ? undefined : await ctx.request.arrayBuffer(),
       })
       const body = await res.arrayBuffer()

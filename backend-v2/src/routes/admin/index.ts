@@ -1,7 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify'
 import cookie from '@fastify/cookie'
 import jwt from '@fastify/jwt'
-import rateLimit from '@fastify/rate-limit'
 import multipart from '@fastify/multipart'
 import { timingSafeEqual } from 'crypto'
 import { adminOrdersRoutes } from './orders.js'
@@ -33,7 +32,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     secret: JWT_SECRET,
     cookie: { cookieName: COOKIE_NAME, signed: false },
   })
-  await fastify.register(rateLimit, { global: false })
+  // rate-limit зарегистрирован глобально в server.ts; здесь только route-конфиги
   await fastify.register(multipart, {
     limits: { fileSize: 30 * 1024 * 1024, files: 1 },
   })

@@ -1,9 +1,13 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { prisma } from '../db.js'
+import { idParamsSchema, slugParamsSchema, pagingQuerySchema } from '../lib/schemas.js'
 
 export const modelsRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/v2/models/search?q= — поиск моделей по имени (для строки поиска)
-  fastify.get<{ Querystring: { q?: string } }>('/search', async (req, reply) => {
+  fastify.get<{ Querystring: { q?: string } }>('/search', {
+    schema: { querystring: pagingQuerySchema(50) },
+    config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+  }, async (req, reply) => {
     const q = (req.query.q || '').trim()
     if (q.length < 2) return { data: [] }
 
@@ -22,7 +26,7 @@ export const modelsRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   // GET /api/v2/models/by-id/:id — slug по старому ID (для 301-редиректов)
-  fastify.get<{ Params: { id: string } }>('/by-id/:id', async (req, reply) => {
+  fastify.get<{ Params: { id: string } }>('/by-id/:id', { schema: { params: idParamsSchema } }, async (req, reply) => {
     const id = parseInt(req.params.id)
     if (isNaN(id)) return reply.status(400).send({ error: 'Неверный ID' })
 
@@ -35,7 +39,7 @@ export const modelsRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   // GET /api/v2/models/:slug — модель + категория + слайды с деталями
-  fastify.get<{ Params: { slug: string } }>('/:slug', async (req, reply) => {
+  fastify.get<{ Params: { slug: string } }>('/:slug', { schema: { params: slugParamsSchema } }, async (req, reply) => {
     const { slug } = req.params
 
     const model = await prisma.model.findFirst({
@@ -117,7 +121,9 @@ export const modelsRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   // GET /api/v2/models — список моделей по category_id (legacy-совместимость)
-  fastify.get<{ Querystring: { category_id?: string } }>('/', async (req, reply) => {
+  fastify.get<{ Querystring: { category_id?: string } }>('/', {
+    schema: { querystring: { type: 'object', properties: { category_id: { type: 'integer', minimum: 1 } } } },
+  }, async (req, reply) => {
     const categoryId = req.query.category_id ? parseInt(req.query.category_id) : null
     if (!categoryId) return reply.status(400).send({ error: 'Нужен параметр category_id' })
 

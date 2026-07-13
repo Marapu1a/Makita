@@ -53,12 +53,10 @@ function OrderModal({
   onClose,
   onSubmit,
   totalPrice,
-  cartItems,
 }: {
   onClose: () => void
   onSubmit: (data: Record<string, unknown>) => Promise<{ success: boolean; message?: string }>
   totalPrice: number
-  cartItems: CartItem[]
 }) {
   const [formData, setFormData] = useState({
     lastName: '',
@@ -132,8 +130,6 @@ function OrderModal({
       const result = await onSubmit({
         ...formData,
         name: fullName,
-        total_price: totalPrice,
-        cart: cartItems,
       })
       if (result.success) {
         setSuccessMessage('Заказ успешно оформлен!')
@@ -319,10 +315,10 @@ export default function CartIsland() {
     orderData: Record<string, unknown>
   ): Promise<{ success: boolean; message?: string }> => {
     try {
+      // цены не отправляем: сервер берёт их из БД и сам считает сумму
       const result = await createOrder({
         ...orderData,
-        cart: cartItems,
-        total_price: totalPrice,
+        items: cartItems.map((i) => ({ partId: i.id, quantity: i.quantity })),
       })
 
       if (result.success) {
@@ -441,7 +437,6 @@ export default function CartIsland() {
               onClose={() => setOrderModalOpen(false)}
               onSubmit={handleOrderSubmit}
               totalPrice={totalPrice}
-              cartItems={cartItems}
             />
           )}
         </>

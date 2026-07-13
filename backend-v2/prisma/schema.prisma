@@ -7,18 +7,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Текущая денормализованная схема БД (до нормализации).
-// parts содержит и данные детали, и её позицию на схеме.
+// КАНОНИЧЕСКАЯ схема БД (единственная в репо; бывший корневой /prisma — черновик — удалён).
+// Состояние ПОСЛЕ нормализации 2026-07: parts — уникальные артикулы,
+// diagram_parts — вхождения детали в схемы моделей.
+// Схема управляется raw SQL-миграциями (migrations/sql), Prisma migrate не используется —
+// после изменений схемы прогонять prisma validate + generate.
 
 model Category {
-  id             Int       @id @default(autoincrement())
-  name           String    @unique @db.VarChar(255)
-  parentId       Int?      @map("parent_id")
-  createdAt      DateTime  @map("createdat") @db.Timestamptz
-  updatedAt      DateTime  @map("updatedat") @db.Timestamptz
-  slug           String?   @db.VarChar(255)
-  seoTitle       String?   @map("seo_title") @db.VarChar(500)
-  seoDescription String?   @map("seo_description") @db.Text
+  id             Int      @id @default(autoincrement())
+  name           String   @unique @db.VarChar(255)
+  parentId       Int?     @map("parent_id")
+  createdAt      DateTime @map("createdat") @db.Timestamptz
+  updatedAt      DateTime @map("updatedat") @db.Timestamptz
+  slug           String?  @db.VarChar(255)
+  seoTitle       String?  @map("seo_title") @db.VarChar(500)
+  seoDescription String?  @map("seo_description") @db.Text
 
   parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
   children Category[] @relation("CategoryTree")
@@ -121,19 +124,19 @@ enum OrderStatus {
 
 // Физическая деталь — одна строка на артикул (после миграции 001)
 model Part {
-  id           Int      @id @default(autoincrement())
-  partNumber   String   @unique @map("part_number") @db.VarChar
-  name         String?  @db.VarChar
-  price        Float    @default(0)
-  availability Boolean  @default(true)
-  quantity     Int      @default(0)
+  id           Int     @id @default(autoincrement())
+  partNumber   String  @unique @map("part_number") @db.VarChar
+  name         String? @db.VarChar
+  price        Float   @default(0)
+  availability Boolean @default(true)
+  quantity     Int     @default(0)
 
-  slug           String?  @unique @db.VarChar(255)
-  seoTitle       String?  @map("seo_title") @db.VarChar(500)
-  seoDescription String?  @map("seo_description") @db.Text
-  h1             String?  @db.VarChar(500)
-  content        String?  @db.Text
-  isIndexable    Boolean  @default(true) @map("is_indexable")
+  slug           String? @unique @db.VarChar(255)
+  seoTitle       String? @map("seo_title") @db.VarChar(500)
+  seoDescription String? @map("seo_description") @db.Text
+  h1             String? @db.VarChar(500)
+  content        String? @db.Text
+  isIndexable    Boolean @default(true) @map("is_indexable")
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime? @map("updated_at") @db.Timestamptz
@@ -146,10 +149,10 @@ model Part {
 
 // Вхождение детали в взрыв-схему модели (позиция, координаты)
 model DiagramPart {
-  id      Int  @id @default(autoincrement())
-  modelId Int  @map("model_id")
-  partId  Int  @map("part_id")
-  slideId Int? @map("slide_id")
+  id      Int    @id @default(autoincrement())
+  modelId Int    @map("model_id")
+  partId  Int    @map("part_id")
+  slideId Int?   @map("slide_id")
   number  Int
   xCoord  Float? @map("x_coord")
   yCoord  Float? @map("y_coord")

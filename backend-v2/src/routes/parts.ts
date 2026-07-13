@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { prisma } from '../db.js'
+import { slugParamsSchema, pagingQuerySchema } from '../lib/schemas.js'
 
 // Общий include: где деталь используется
 const usedInSelect = {
@@ -58,6 +59,10 @@ export const partsRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/v2/parts/search?q=&limit=&page= — поиск по артикулу или названию
   fastify.get<{ Querystring: { q?: string; page?: string; limit?: string } }>(
     '/search',
+    {
+      schema: { querystring: pagingQuerySchema(50) },
+      config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+    },
     async (req, reply) => {
       const q     = (req.query.q || '').trim()
       const page  = Math.max(1, parseInt(req.query.page  || '1'))
@@ -99,7 +104,7 @@ export const partsRoutes: FastifyPluginAsync = async (fastify) => {
   )
 
   // GET /api/v2/parts/by-slug/:slug — деталь по слагу (для SEO-страниц)
-  fastify.get<{ Params: { slug: string } }>('/by-slug/:slug', async (req, reply) => {
+  fastify.get<{ Params: { slug: string } }>('/by-slug/:slug', { schema: { params: slugParamsSchema } }, async (req, reply) => {
     const part = await prisma.part.findUnique({
       where: { slug: req.params.slug },
       select: {

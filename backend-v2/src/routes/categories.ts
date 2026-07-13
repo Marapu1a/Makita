@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { prisma } from '../db.js'
+import { idParamsSchema, slugParamsSchema, pagingQuerySchema } from '../lib/schemas.js'
 
 export const categoriesRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/v2/categories/sitemap — все слаги для sitemap.xml
@@ -11,7 +12,8 @@ export const categoriesRoutes: FastifyPluginAsync = async (fastify) => {
         orderBy: { name: 'asc' },
       }),
       prisma.model.findMany({
-        where: { slug: { not: null } },
+        // выключенные в админке страницы (isIndexable=false) в sitemap не попадают
+        where: { slug: { not: null }, isIndexable: true },
         select: { slug: true, category: { select: { slug: true } } },
         orderBy: { name: 'asc' },
       }),
@@ -23,7 +25,7 @@ export const categoriesRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   // GET /api/v2/categories/by-id/:id — slug по старому ID (для 301-редиректов)
-  fastify.get<{ Params: { id: string } }>('/by-id/:id', async (req, reply) => {
+  fastify.get<{ Params: { id: string } }>('/by-id/:id', { schema: { params: idParamsSchema } }, async (req, reply) => {
     const id = parseInt(req.params.id)
     if (isNaN(id)) return reply.status(400).send({ error: 'Неверный ID' })
 
@@ -56,6 +58,7 @@ export const categoriesRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/v2/categories/:slug — категория + список моделей (с пагинацией)
   fastify.get<{ Params: { slug: string }; Querystring: { page?: string; limit?: string } }>(
     '/:slug',
+    { schema: { params: slugParamsSchema, querystring: pagingQuerySchema(500) } },
     async (req, reply) => {
       const { slug } = req.params
       const page  = Math.max(1, parseInt(req.query.page  || '1'))

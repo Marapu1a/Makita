@@ -39,3 +39,7 @@ Thumbs.db
 
 # Local notes, reports, logs (not for git)
 _notes/
+
+# Прайсы: коммерческие данные, заливаются через админку
+*.xlsx
+*.XLS

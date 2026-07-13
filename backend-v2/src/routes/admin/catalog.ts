@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../../db.js'
+import { idParamsSchema } from '../../lib/schemas.js'
 
 export const adminCatalogRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /search?q= — единый поиск: модели по имени + детали по артикулу/названию
@@ -53,7 +54,7 @@ export const adminCatalogRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   // GET /categories/:id/models — модели категории
-  fastify.get<{ Params: { id: string } }>('/categories/:id/models', async (req) => {
+  fastify.get<{ Params: { id: string } }>('/categories/:id/models', { schema: { params: idParamsSchema } }, async (req) => {
     const models = await prisma.model.findMany({
       where: { categoryId: parseInt(req.params.id) },
       select: { id: true, name: true, slug: true, _count: { select: { diagramParts: true } } },
@@ -65,7 +66,7 @@ export const adminCatalogRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   // GET /models/:id — модель + SEO-поля + детали
-  fastify.get<{ Params: { id: string } }>('/models/:id', async (req, reply) => {
+  fastify.get<{ Params: { id: string } }>('/models/:id', { schema: { params: idParamsSchema } }, async (req, reply) => {
     const id = parseInt(req.params.id)
     const model = await prisma.model.findUnique({
       where: { id },
@@ -103,7 +104,7 @@ export const adminCatalogRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.patch<{
     Params: { id: string }
     Body: { name?: string; seoTitle?: string | null; seoDescription?: string | null; h1?: string | null; content?: string | null; isIndexable?: boolean }
-  }>('/models/:id', async (req, reply) => {
+  }>('/models/:id', { schema: { params: idParamsSchema } }, async (req, reply) => {
     const id = parseInt(req.params.id)
     const b = req.body || {}
 
@@ -132,7 +133,7 @@ export const adminCatalogRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   // GET /parts/:id — деталь + где используется
-  fastify.get<{ Params: { id: string } }>('/parts/:id', async (req, reply) => {
+  fastify.get<{ Params: { id: string } }>('/parts/:id', { schema: { params: idParamsSchema } }, async (req, reply) => {
     const id = parseInt(req.params.id)
     const part = await prisma.part.findUnique({
       where: { id },
@@ -171,7 +172,7 @@ export const adminCatalogRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.patch<{
     Params: { id: string }
     Body: { partNumber?: string; name?: string | null; price?: number; availability?: boolean; quantity?: number }
-  }>('/parts/:id', async (req, reply) => {
+  }>('/parts/:id', { schema: { params: idParamsSchema } }, async (req, reply) => {
     const id = parseInt(req.params.id)
     const b = req.body || {}
 

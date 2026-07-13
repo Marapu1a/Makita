@@ -7,11 +7,9 @@ const DELIVERY_MAP: Record<string, 'PICKUP' | 'DELIVERY' | 'REGION_SHIPPING'> = 
   'Отправка в регион': 'REGION_SHIPPING',
 }
 
-interface CartItem {
-  id?: number
-  product_id?: number
+interface OrderItemInput {
+  partId: number
   quantity: number
-  price: number
 }
 
 interface OrderBody {
@@ -25,50 +23,111 @@ interface OrderBody {
   house?: string
   apartment?: string
   comment?: string
-  total_price: number
-  cart: CartItem[]
+  items: OrderItemInput[]
 }
+
+// Клиент присылает только partId+quantity: цены и сумма считаются
+// исключительно по БД (клиентская цена — не источник истины).
+const orderBodySchema = {
+  type: 'object',
+  required: ['name', 'phone', 'email', 'delivery_method', 'items'],
+  properties: {
+    name: { type: 'string', minLength: 1, maxLength: 255 },
+    phone: { type: 'string', minLength: 5, maxLength: 32 },
+    email: { type: 'string', minLength: 5, maxLength: 255, pattern: '^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$' },
+    delivery_method: { type: 'string', enum: Object.keys(DELIVERY_MAP) },
+    transport_company: { type: 'string', maxLength: 255 },
+    city: { type: 'string', maxLength: 255 },
+    street: { type: 'string', maxLength: 255 },
+    house: { type: 'string', maxLength: 64 },
+    apartment: { type: 'string', maxLength: 64 },
+    comment: { type: 'string', maxLength: 2000 },
+    items: {
+      type: 'array',
+      minItems: 1,
+      maxItems: 100,
+      items: {
+        type: 'object',
+        required: ['partId', 'quantity'],
+        properties: {
+          partId: { type: 'integer', minimum: 1 },
+          quantity: { type: 'integer', minimum: 1, maximum: 999 },
+        },
+      },
+    },
+  },
+} as const
 
 export const ordersRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /api/v2/orders — оформить заказ
-  fastify.post<{ Body: OrderBody }>('/', async (req, reply) => {
-    const b = req.body
+  fastify.post<{ Body: OrderBody }>(
+    '/',
+    {
+      schema: { body: orderBodySchema },
+      config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
+      attachValidation: true,
+    },
+    async (req, reply) => {
+      if (req.validationError) {
+        return reply.status(400).send({ success: false, message: 'Некорректные данные заказа' })
+      }
+      const b = req.body
 
-    if (!b.cart || b.cart.length === 0) {
-      return reply.status(400).send({ success: false, message: 'Корзина пуста' })
-    }
-    if (!b.name?.trim() || !b.phone?.trim() || !b.email?.trim()) {
-      return reply.status(400).send({ success: false, message: 'Заполните обязательные поля' })
-    }
-    const deliveryMethod = DELIVERY_MAP[b.delivery_method]
-    if (!deliveryMethod) {
-      return reply.status(400).send({ success: false, message: 'Неверный способ доставки' })
-    }
+      // схлопываем дубли одной детали в одну позицию
+      const wanted = new Map<number, number>()
+      for (const it of b.items) {
+        wanted.set(it.partId, (wanted.get(it.partId) || 0) + it.quantity)
+      }
 
-    const order = await prisma.order.create({
-      data: {
-        name: b.name.trim(),
-        phone: b.phone.trim(),
-        email: b.email.trim(),
-        deliveryMethod,
-        transportCompany: b.transport_company || null,
-        city: b.city || null,
-        street: b.street || null,
-        house: b.house || null,
-        apartment: b.apartment || null,
-        comment: b.comment || null,
-        totalPrice: b.total_price || 0,
-        status: 'NEW',
-        items: {
-          create: b.cart.map((item) => ({
-            productId: item.product_id ?? item.id ?? null,
-            quantity: item.quantity,
-            price: item.price,
-          })),
+      const parts = await prisma.part.findMany({
+        where: { id: { in: [...wanted.keys()] } },
+        select: { id: true, partNumber: true, name: true, price: true, availability: true },
+      })
+      const byId = new Map(parts.map((p) => [p.id, p]))
+
+      const missing = [...wanted.keys()].filter((id) => !byId.has(id))
+      if (missing.length) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Часть позиций корзины не найдена в каталоге — обновите страницу',
+        })
+      }
+      const unavailable = parts.filter((p) => !p.availability || p.price <= 0)
+      if (unavailable.length) {
+        return reply.status(409).send({
+          success: false,
+          message: `Нет в наличии: ${unavailable.map((p) => p.partNumber).join(', ')} — уберите из корзины`,
+        })
+      }
+
+      // цены только из БД; в БД они уже целые рубли, но округляем на всякий случай
+      const items = [...wanted.entries()].map(([partId, quantity]) => ({
+        productId: partId,
+        quantity,
+        price: Math.round(byId.get(partId)!.price),
+      }))
+      const totalPrice = items.reduce((sum, it) => sum + it.price * it.quantity, 0)
+
+      // вложенный create — одна транзакция: заказ и позиции атомарны
+      const order = await prisma.order.create({
+        data: {
+          name: b.name.trim(),
+          phone: b.phone.trim(),
+          email: b.email.trim(),
+          deliveryMethod: DELIVERY_MAP[b.delivery_method],
+          transportCompany: b.transport_company?.trim() || null,
+          city: b.city?.trim() || null,
+          street: b.street?.trim() || null,
+          house: b.house?.trim() || null,
+          apartment: b.apartment?.trim() || null,
+          comment: b.comment?.trim() || null,
+          totalPrice,
+          status: 'NEW',
+          items: { create: items },
         },
-      },
-    })
+      })
 
-    return reply.status(201).send({ success: true, orderId: order.id })
-  })
+      return reply.status(201).send({ success: true, orderId: order.id, totalPrice })
+    }
+  )
 }

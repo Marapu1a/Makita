@@ -1,6 +1,20 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { OrderStatus } from '@prisma/client'
 import { prisma } from '../../db.js'
+import { idParamsSchema } from '../../lib/schemas.js'
+
+const DATE_RE = '^\\d{4}-\\d{2}-\\d{2}$'
+const ordersListQuerySchema = {
+  type: 'object',
+  properties: {
+    status: { type: 'string', maxLength: 32 },
+    phone: { type: 'string', maxLength: 32 },
+    from: { type: 'string', pattern: DATE_RE },
+    to: { type: 'string', pattern: DATE_RE },
+    page: { type: 'integer', minimum: 1 },
+    limit: { type: 'integer', minimum: 1, maximum: 100 },
+  },
+} as const
 
 // В БД статусы хранятся русскими значениями (@map), Prisma оперирует ключами.
 // Наружу отдаём и принимаем русские подписи — фронту не нужно знать про enum-ключи.
@@ -25,7 +39,7 @@ export const adminOrdersRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /?status=&phone=&from=&to=&page=&limit= — список с фильтрами и пагинацией
   fastify.get<{
     Querystring: { status?: string; phone?: string; from?: string; to?: string; page?: string; limit?: string }
-  }>('/', async (req, reply) => {
+  }>('/', { schema: { querystring: ordersListQuerySchema } }, async (req, reply) => {
     const page = Math.max(1, parseInt(req.query.page || '1'))
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '25')))
 
@@ -79,7 +93,7 @@ export const adminOrdersRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   // GET /:id — карточка заказа с позициями
-  fastify.get<{ Params: { id: string } }>('/:id', async (req, reply) => {
+  fastify.get<{ Params: { id: string } }>('/:id', { schema: { params: idParamsSchema } }, async (req, reply) => {
     const id = parseInt(req.params.id)
     const order = await prisma.order.findUnique({
       where: { id },
@@ -135,7 +149,7 @@ export const adminOrdersRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   // PATCH /:id — смена статуса
-  fastify.patch<{ Params: { id: string }; Body: { status?: string } }>('/:id', async (req, reply) => {
+  fastify.patch<{ Params: { id: string }; Body: { status?: string } }>('/:id', { schema: { params: idParamsSchema } }, async (req, reply) => {
     const id = parseInt(req.params.id)
     const key = req.body?.status ? RU_STATUS[req.body.status] : undefined
     if (!key) return reply.status(400).send({ error: 'Не передан корректный статус' })
