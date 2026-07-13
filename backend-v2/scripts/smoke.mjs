@@ -26,10 +26,14 @@ const getJson = async (path, expect = 200) => {
 
 console.log(`Смоук против ${BASE}`)
 
-await check('health', async () => {
-  const res = await fetch(api('/health'))
-  if (!res.ok) throw new Error(`status ${res.status}`)
-})
+// /health отдаёт только сам бэкенд: наружу (через прокси сайта) проксируются
+// лишь /api/* и /images/*, поэтому против публичного домена проверку пропускаем
+if (BASE.includes('localhost') || BASE.includes('127.0.0.1')) {
+  await check('health', async () => {
+    const res = await fetch(api('/health'))
+    if (!res.ok) throw new Error(`status ${res.status}`)
+  })
+}
 
 let firstModel = null
 await check('категории', async () => {
