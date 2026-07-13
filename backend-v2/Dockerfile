@@ -12,8 +12,9 @@ RUN npx prisma generate
 RUN npm run build
 
 FROM node:22-alpine
-# pg_dump для бэкапов из админки (сервер БД — postgres:15)
-RUN apk add --no-cache postgresql15-client
+# pg_dump для бэкапов из админки (клиент новее сервера postgres:15 — это ок,
+# дампить старые версии он умеет; конкретный postgresqlNN-client в alpine кочует)
+RUN apk add --no-cache postgresql-client
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
