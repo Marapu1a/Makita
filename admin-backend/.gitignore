@@ -1,7 +1,0 @@
-node_modules/
-.env
-.env.production
-.env.development
-script/backups/
-script/*.xlsx
-script/*.xls

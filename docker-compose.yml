@@ -27,20 +27,6 @@ services:
     depends_on:
       - db
 
-  admin-backend:
-    build: ./admin-backend
-    container_name: my_admin_backend
-    restart: always
-    env_file:
-      - ./admin-backend/.env.production
-    environment:
-      # Страховка от sequelize.sync: без явного ALLOW_DB_SYNC=true схему не трогать
-      - NODE_ENV=production
-    ports:
-      - "5001:5001"
-    depends_on:
-      - db
-
   frontend:
     build: ./frontend
     container_name: my_frontend
@@ -52,6 +38,7 @@ services:
     depends_on:
       - backend
 
+  # Админка: SPA + nginx, /api проксируется в backend-v2 (см. admin-frontend/nginx.conf)
   admin-frontend:
     build: ./admin-frontend
     container_name: my_admin_frontend
@@ -59,7 +46,7 @@ services:
     ports:
       - "8081:80"
     depends_on:
-      - admin-backend
+      - backend-v2
 
   # ─── v2 stack ───────────────────────────────────────────────
   backend-v2:
@@ -73,6 +60,8 @@ services:
     volumes:
       # На проде картинки живут в /var/www/makita-public/images (их раздаёт хостовый nginx)
       - /var/www/makita-public/images:/var/www/images:ro
+      # Хранилище админки (загруженные прайсы, их архив, дампы БД) — переживает пересборку
+      - /root/admin-storage:/app/storage
     depends_on:
       - db
 

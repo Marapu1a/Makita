@@ -1,287 +1,213 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-
-import OrderModal from "../components/OrderModal";
+import { useCallback, useEffect, useState } from "react";
 import {
+  fetchOrder,
   fetchOrders,
   updateOrderStatus,
-  getOrderById,
-  Order,
+  ApiError,
 } from "../api/api";
+import type { OrderDetail, OrderRow } from "../api/api";
+import OrderModal from "../components/OrderModal";
+import { useToast } from "../components/Toast";
 
-const statuses = ["Новый", "В обработке", "Отправлен", "Завершён", "Отменён"];
+export const ORDER_STATUSES = ["Новый", "В обработке", "Отправлен", "Завершён", "Отменён"];
 
-const getStatusClass = (status: string) => {
+export const statusClass = (status: string) => {
   switch (status) {
     case "Новый":
-      return "bg-blue-100 text-blue-800";
+      return "bg-makita text-white";
     case "В обработке":
-      return "bg-yellow-100 text-yellow-800";
+      return "bg-gray-800 text-white";
     case "Отправлен":
-      return "bg-orange-100 text-orange-800";
+      return "border border-makita text-makita";
     case "Завершён":
-      return "bg-green-100 text-green-800";
+      return "border border-gray-300 text-gray-500";
     case "Отменён":
-      return "bg-gray-200 text-gray-800";
+      return "border border-gray-300 text-gray-400 line-through";
     default:
-      return "";
+      return "border border-gray-300";
   }
 };
 
-const OrdersPage = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [filter, setFilter] = useState<string>("");
-  const [phoneFilter, setPhoneFilter] = useState<string>("");
-  const [modalOrder, setModalOrder] = useState<any | null>(null);
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
-  const [sortKey, setSortKey] = useState<keyof Order | null>(null);
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+const PAGE_SIZE = 25;
 
-  const navigate = useNavigate();
+const fmtDateTime = (iso: string) =>
+  new Date(iso).toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+const fmtPrice = (v: number) => `${Math.round(v).toLocaleString("ru-RU")} ₽`;
+
+const OrdersPage = () => {
+  const toast = useToast();
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState("");
+  const [phone, setPhone] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [modalOrder, setModalOrder] = useState<OrderDetail | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetchOrders({ status, phone, from, to, page, limit: PAGE_SIZE });
+      setOrders(res.data);
+      setTotal(res.total);
+    } catch (e) {
+      if (!(e instanceof ApiError && e.status === 401)) toast("error", "Не удалось загрузить заказы");
+    } finally {
+      setLoading(false);
+    }
+  }, [status, phone, from, to, page, toast]);
 
   useEffect(() => {
-    const loadOrders = async () => {
-      try {
-        const data = await fetchOrders(filter);
-        setOrders(data);
-      } catch (err) {
-        console.error("Ошибка при загрузке заказов:", err);
-        setOrders([]);
-      }
-    };
+    load();
+  }, [load]);
 
-    loadOrders();
-  }, [filter]);
+  // при смене фильтров возвращаемся на первую страницу
+  const withReset = <T,>(setter: (v: T) => void) => (v: T) => {
+    setPage(1);
+    setter(v);
+  };
 
   const handleStatusChange = async (id: number, newStatus: string) => {
-    const confirmed = window.confirm(
-      `Вы уверены, что хотите изменить статус заказа #${id} на "${newStatus}"?`
-    );
-    if (!confirmed) return;
-
+    const prev = orders;
+    setOrders((o) => o.map((ord) => (ord.id === id ? { ...ord, status: newStatus } : ord)));
     try {
       await updateOrderStatus(id, newStatus);
-      setOrders((prev) =>
-        prev.map((order) =>
-          order.id === id ? { ...order, status: newStatus } : order
-        )
-      );
-    } catch (err) {
-      console.error("Ошибка при обновлении статуса:", err);
+      toast("success", `Заказ #${id} → «${newStatus}»`);
+    } catch {
+      setOrders(prev);
+      toast("error", `Не удалось обновить заказ #${id}`);
     }
   };
 
-  const handleSort = (key: keyof Order) => {
-    if (sortKey === key) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setSortKey(key);
-      setSortOrder("asc");
-    }
-  };
-
-  const getSortArrow = (key: keyof Order) => {
-    if (sortKey !== key) return null;
-    return sortOrder === "asc" ? "▲" : "▼";
-  };
-
-  const showOrderDetails = async (id: number) => {
+  const showDetails = async (id: number) => {
     try {
-      const order = await getOrderById(id);
-      setModalOrder(order);
-    } catch (err) {
-      console.error("Ошибка при загрузке деталей заказа:", err);
+      const { data } = await fetchOrder(id);
+      setModalOrder(data);
+    } catch {
+      toast("error", "Не удалось загрузить заказ");
     }
   };
 
-  const filteredOrders = [...orders]
-    .filter((order) =>
-      order.phone.toLowerCase().includes(phoneFilter.toLowerCase())
-    )
-    .filter((order) => {
-      const created = new Date(order.created_at).getTime();
-      const start = startDate ? new Date(startDate).getTime() : null;
-      const end = endDate ? new Date(endDate).getTime() : null;
-      return (!start || created >= start) && (!end || created <= end);
-    })
-    .sort((a, b) => {
-      if (!sortKey) return 0;
-      const valA = a[sortKey];
-      const valB = b[sortKey];
-      if (valA === valB) return 0;
-      if (sortOrder === "asc") return valA > valB ? 1 : -1;
-      return valA < valB ? 1 : -1;
-    });
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Заказы</h1>
-      <div className="flex justify-between items-center mb-4">
-        <button
-          onClick={() => {
-            navigate("/dashboard");
-          }}
-          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-700"
-        >
-          Выйти
-        </button>
-      </div>
+    <div>
+      <h1 className="mb-4 text-2xl font-bold">Заказы</h1>
 
-      <div className="mb-4 flex items-center space-x-6">
+      <div className="mb-6 flex flex-wrap items-end gap-4">
         <div>
-          <label className="mr-2 font-medium">Фильтр по статусу:</label>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="border px-2 py-1 rounded"
-          >
+          <label className="field-label">Статус</label>
+          <select value={status} onChange={(e) => withReset(setStatus)(e.target.value)} className="field w-44">
             <option value="">Все</option>
-            {statuses.map((s) => (
+            {ORDER_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
             ))}
           </select>
         </div>
-
-        <div className="flex items-center space-x-4">
-          <div>
-            <label className="mr-2 font-medium">Телефон:</label>
-            <input
-              type="text"
-              value={phoneFilter}
-              onChange={(e) => {
-                let value = e.target.value;
-                const raw = value.replace(/\D/g, "");
-
-                // Если стерли всё — оставляем только "+7"
-                if (raw.length === 0) {
-                  setPhoneFilter("+7");
-                  return;
-                }
-
-                // Формируем маску
-                let formatted = "+7";
-
-                if (raw.length > 1) formatted += ` (${raw.slice(1, 4)}`;
-                if (raw.length >= 4) formatted += `) ${raw.slice(4, 7)}`;
-                if (raw.length >= 7) formatted += `-${raw.slice(7, 9)}`;
-                if (raw.length >= 9) formatted += `-${raw.slice(9, 11)}`;
-
-                // Если пользователь удаляет — не добавлять лишние символы
-                if (value.length < phoneFilter.length) {
-                  setPhoneFilter(value);
-                } else {
-                  setPhoneFilter(formatted);
-                }
-              }}
-              placeholder="+7..."
-              className="border px-2 py-1 rounded"
-            />
-          </div>
-
-          <div>
-            <label className="mr-2 font-medium">От:</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="border px-2 py-1 rounded"
-            />
-          </div>
-
-          <div>
-            <label className="mr-2 font-medium">До:</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="border px-2 py-1 rounded"
-            />
-          </div>
+        <div>
+          <label className="field-label">Телефон</label>
+          <input
+            type="text"
+            value={phone}
+            onChange={(e) => withReset(setPhone)(e.target.value)}
+            placeholder="Цифры в любом виде"
+            className="field w-48"
+          />
+        </div>
+        <div>
+          <label className="field-label">От</label>
+          <input type="date" value={from} onChange={(e) => withReset(setFrom)(e.target.value)} className="field w-40" />
+        </div>
+        <div>
+          <label className="field-label">До</label>
+          <input type="date" value={to} onChange={(e) => withReset(setTo)(e.target.value)} className="field w-40" />
+        </div>
+        <div className="ml-auto pb-2 text-sm text-gray-500">
+          Всего: <span className="font-semibold text-ink">{total}</span>
         </div>
       </div>
 
-      <table className="w-full border text-sm">
+      <table className="tbl">
         <thead>
-          <tr className="bg-gray-100 text-left">
-            <th
-              className="p-2 border cursor-pointer"
-              onClick={() => handleSort("id")}
-            >
-              ID {getSortArrow("id")}
-            </th>
-            <th
-              className="p-2 border cursor-pointer"
-              onClick={() => handleSort("created_at")}
-            >
-              Дата {getSortArrow("created_at")}
-            </th>
-            <th
-              className="p-2 border cursor-pointer"
-              onClick={() => handleSort("name")}
-            >
-              Имя {getSortArrow("name")}
-            </th>
-            <th
-              className="p-2 border cursor-pointer"
-              onClick={() => handleSort("phone")}
-            >
-              Телефон {getSortArrow("phone")}
-            </th>
-            <th className="p-2 border">Статус</th>
-            <th
-              className="p-2 border cursor-pointer"
-              onClick={() => handleSort("total_price")}
-            >
-              Сумма {getSortArrow("total_price")}
-            </th>
-            <th className="p-2 border">Действия</th>
+          <tr>
+            <th>#</th>
+            <th>Дата</th>
+            <th>Имя</th>
+            <th>Телефон</th>
+            <th>Статус</th>
+            <th className="text-right">Сумма</th>
+            <th>Позиций</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
-          {filteredOrders.map((order) => (
-            <tr key={order.id} className="border-t">
-              <td className="p-2 border">{order.id}</td>
-              <td className="p-2 border">
-                {new Date(order.created_at).toLocaleString()}
-              </td>
-              <td className="p-2 border">{order.name}</td>
-              <td className="p-2 border">{order.phone}</td>
-              <td className="p-2 border">
+          {orders.map((order) => (
+            <tr key={order.id} className="hover:bg-gray-50">
+              <td className="font-semibold">{order.id}</td>
+              <td>{fmtDateTime(order.createdAt)}</td>
+              <td>{order.name}</td>
+              <td className="whitespace-nowrap">{order.phone}</td>
+              <td>
                 <select
                   value={order.status}
                   onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                  className={`border rounded px-1 py-0.5 ${getStatusClass(
-                    order.status
-                  )}`}
+                  className={`cursor-pointer px-2 py-1 text-xs font-semibold uppercase tracking-wider ${statusClass(order.status)}`}
                 >
-                  {statuses.map((s) => (
-                    <option key={s} value={s}>
+                  {ORDER_STATUSES.map((s) => (
+                    <option key={s} value={s} className="bg-white font-normal normal-case text-ink">
                       {s}
                     </option>
                   ))}
                 </select>
               </td>
-              <td className="p-2 border">{order.total_price} ₽</td>
-              <td className="p-2 border">
+              <td className="text-right whitespace-nowrap">{fmtPrice(order.totalPrice)}</td>
+              <td className="text-center">{order.itemsCount}</td>
+              <td>
                 <button
-                  onClick={() => showOrderDetails(order.id)}
-                  className="text-blue-600 hover:underline"
+                  onClick={() => showDetails(order.id)}
+                  className="text-sm font-semibold text-makita hover:text-makita-dark"
                 >
                   Подробнее
                 </button>
               </td>
             </tr>
           ))}
+          {!loading && orders.length === 0 && (
+            <tr>
+              <td colSpan={8} className="py-8 text-center text-gray-400">
+                Заказов не найдено
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
 
-      {/* Модалка */}
-      {modalOrder && (
-        <OrderModal order={modalOrder} onClose={() => setModalOrder(null)} />
+      {pages > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <button onClick={() => setPage(page - 1)} disabled={page <= 1} className="btn-ghost px-3 py-1">
+            ←
+          </button>
+          <span className="px-2 text-sm">
+            {page} / {pages}
+          </span>
+          <button onClick={() => setPage(page + 1)} disabled={page >= pages} className="btn-ghost px-3 py-1">
+            →
+          </button>
+        </div>
       )}
+
+      {modalOrder && <OrderModal order={modalOrder} onClose={() => setModalOrder(null)} />}
     </div>
   );
 };

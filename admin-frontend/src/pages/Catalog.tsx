@@ -1,176 +1,204 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   fetchCategories,
-  fetchModelsByCategory,
-  fetchPartsByModel,
+  fetchCategoryModels,
+  searchCatalog,
+  ApiError,
 } from "../api/api";
+import type { CategoryNode, ModelRow, SearchResult } from "../api/api";
 import PartEditor from "../components/PartEditor";
-import BackButton from "../components/BackButton";
+import { useToast } from "../components/Toast";
 
-interface Category {
-  id: number;
-  name: string;
-}
-
-interface Model {
-  id: number;
-  name: string;
-}
-
-interface Part {
-  id: number;
-  number: number;
-  name: string;
-  part_number: string;
-  price: number;
-  availability: boolean;
-}
+const fmtPrice = (v: number) => `${Math.round(v).toLocaleString("ru-RU")} ₽`;
 
 const Catalog = () => {
-  const { categoryId } = useParams<{ categoryId: string }>();
-  const navigate = useNavigate();
+  const toast = useToast();
+  const [categories, setCategories] = useState<CategoryNode[]>([]);
+  const [activeCategory, setActiveCategory] = useState<CategoryNode | null>(null);
+  const [models, setModels] = useState<ModelRow[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
 
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedModel, setSelectedModel] = useState<number | null>(null);
-  const [selectedPart, setSelectedPart] = useState<Part | null>(null);
-  const [models, setModels] = useState<Model[]>([]);
-  const [parts, setParts] = useState<Part[]>([]);
-  const modelsRef = useRef<HTMLDivElement | null>(null);
-  const partsRef = useRef<HTMLDivElement | null>(null);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [editPartId, setEditPartId] = useState<number | null>(null);
 
   useEffect(() => {
-    const loadData = async () => {
-      setSelectedModel(null);
-      setSelectedPart(null);
-      setModels([]);
-      setParts([]);
+    fetchCategories()
+      .then((res) => setCategories(res.data))
+      .catch((e) => {
+        if (!(e instanceof ApiError && e.status === 401)) toast("error", "Не удалось загрузить категории");
+      });
+  }, [toast]);
 
+  // поиск с дебаунсом
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setResults(null);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const t = setTimeout(async () => {
       try {
-        const cats = await fetchCategories(categoryId ? +categoryId : null);
-        if (cats.length > 0) {
-          setCategories(cats);
-        } else if (categoryId) {
-          const models = await fetchModelsByCategory(+categoryId);
-          setModels(models);
-        }
-      } catch (error) {
-        console.error("Ошибка загрузки данных:", error);
+        const res = await searchCatalog(q);
+        setResults(res.data);
+      } catch {
+        setResults(null);
+      } finally {
+        setSearching(false);
       }
-    };
-
-    loadData();
-  }, [categoryId]);
-
-  const handleCategoryClick = (id: number) => {
-    navigate(`/catalog/${id}`);
-    setTimeout(() => {
-      modelsRef.current?.scrollIntoView();
     }, 300);
-  };
+    return () => clearTimeout(t);
+  }, [query]);
 
-  const handleModelClick = async (modelId: number) => {
-    setSelectedModel(modelId);
+  const openCategory = async (cat: CategoryNode) => {
+    setActiveCategory(cat);
+    setModels([]);
+    setModelsLoading(true);
     try {
-      const data = await fetchPartsByModel(modelId);
-      setParts(data);
-      setTimeout(() => {
-        partsRef.current?.scrollIntoView();
-      }, 300);
-    } catch (error) {
-      console.error("Ошибка при загрузке деталей:", error);
+      const res = await fetchCategoryModels(cat.id);
+      setModels(res.data);
+    } catch {
+      toast("error", "Не удалось загрузить модели");
+    } finally {
+      setModelsLoading(false);
     }
   };
 
+  // категории у нас плоские (parent_id не используется), сортируем по имени
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => a.name.localeCompare(b.name, "ru")),
+    [categories]
+  );
+
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      <h2 className="text-3xl font-bold text-gray-800">Каталог</h2>
-      <BackButton />
+    <div>
+      <h1 className="mb-4 text-2xl font-bold">Каталог</h1>
 
-      {categories.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-gray-700">Категории</h3>
-          <div className="flex flex-wrap gap-2">
-            <div className="flex flex-wrap gap-4">
-              {categories.map((category) => (
-                <div
-                  key={category.id}
-                  className="w-60 p-4 rounded-lg border shadow-sm hover:shadow-md transition cursor-pointer bg-white"
-                  onClick={() => handleCategoryClick(category.id)}
-                >
-                  <div className="text-lg font-semibold">{category.name}</div>
-                  <div className="text-xs text-gray-500 mt-1">Категория</div>
+      <div className="mb-8">
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Поиск: артикул, название детали или модель…"
+          className="field max-w-xl text-base"
+          autoFocus
+        />
+
+        {query.trim().length >= 2 && (
+          <div className="mt-4 max-w-3xl space-y-6">
+            {searching && <p className="text-sm text-gray-400">Ищу…</p>}
+
+            {results && results.models.length > 0 && (
+              <div>
+                <h2 className="field-label">Модели</h2>
+                <div className="flex flex-wrap gap-2">
+                  {results.models.map((m) => (
+                    <Link
+                      key={m.id}
+                      to={`/catalog/models/${m.id}`}
+                      className="border border-gray-300 px-3 py-2 text-sm hover:border-makita hover:text-makita"
+                    >
+                      <span className="font-semibold">{m.name}</span>
+                      <span className="ml-2 text-xs text-gray-400">{m.category}</span>
+                    </Link>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+              </div>
+            )}
 
-      {models.length > 0 && (
-        <div ref={modelsRef} className="space-y-2">
-          <h3 className="text-lg font-semibold text-gray-700">Модели</h3>
-          <div className="flex flex-wrap gap-2">
-            <div className="flex flex-wrap gap-4">
-              {models.map((model) => (
-                <div
-                  key={model.id}
-                  className={`w-40 p-4 rounded-lg border shadow-sm hover:shadow-md transition cursor-pointer
-      ${
-        selectedModel === model.id
-          ? "bg-green-100 border-green-500"
-          : "bg-white"
-      }`}
-                  onClick={() => handleModelClick(model.id)}
-                >
-                  <div className="text-lg font-semibold">{model.name}</div>
-                  <div className="text-xs text-gray-500 mt-1">Модель</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+            {results && results.parts.length > 0 && (
+              <div>
+                <h2 className="field-label">Детали</h2>
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>Артикул</th>
+                      <th>Название</th>
+                      <th className="text-right">Цена</th>
+                      <th>Наличие</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {results.parts.map((p) => (
+                      <tr
+                        key={p.id}
+                        className="cursor-pointer hover:bg-gray-50"
+                        onClick={() => setEditPartId(p.id)}
+                      >
+                        <td className="font-semibold">{p.partNumber}</td>
+                        <td>{p.name || "Без названия"}</td>
+                        <td className="text-right whitespace-nowrap">{p.price > 0 ? fmtPrice(p.price) : "—"}</td>
+                        <td>{p.availability ? "В наличии" : "Нет"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-      {selectedModel && parts.length > 0 && (
-        <div ref={partsRef} className="space-y-2">
-          <h3 className="text-lg font-semibold text-gray-700">Детали</h3>
-          <table className="min-w-full border border-gray-200 text-sm">
-            <thead className="bg-gray-100 text-gray-700">
-              <tr>
-                <th className="px-4 py-2 text-left">#</th>
-                <th className="px-4 py-2 text-left">Артикул</th>
-                <th className="px-4 py-2 text-left">Название</th>
-                <th className="px-4 py-2 text-left">Цена</th>
-                <th className="px-4 py-2 text-left">Наличие</th>
-              </tr>
-            </thead>
-            <tbody>
-              {parts
-                .sort((a, b) => a.number - b.number)
-                .map((part) => (
-                  <tr
-                    key={part.id}
-                    className="hover:bg-green-200 cursor-pointer"
-                    onClick={() => setSelectedPart(part)}
+            {results && !searching && results.models.length === 0 && results.parts.length === 0 && (
+              <p className="text-sm text-gray-400">Ничего не найдено</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {query.trim().length < 2 && (
+        <div className="flex items-start gap-8">
+          <div className="w-72 shrink-0">
+            <h2 className="field-label">Категории</h2>
+            <ul className="border-t border-gray-200">
+              {sortedCategories.map((cat) => (
+                <li key={cat.id}>
+                  <button
+                    onClick={() => openCategory(cat)}
+                    className={`flex w-full items-center justify-between border-b border-gray-200 px-2 py-1.5 text-left text-sm transition-colors ${
+                      activeCategory?.id === cat.id ? "bg-makita text-white" : "hover:bg-gray-50"
+                    }`}
                   >
-                    <td className="px-4 py-2">{part.number}</td>
-                    <td className="px-4 py-2">{part.part_number}</td>
-                    <td className="px-4 py-2">{part.name || "Без названия"}</td>
-                    <td className="px-4 py-2">{Math.ceil(part.price)}₽</td>
-                    <td className="px-4 py-2">
-                      {part.availability ? "✓" : "—"}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+                    <span>{cat.name}</span>
+                    <span className={activeCategory?.id === cat.id ? "text-white/70" : "text-gray-400"}>
+                      {cat.modelsCount}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            {activeCategory && (
+              <>
+                <h2 className="field-label">{activeCategory.name}</h2>
+                {modelsLoading && <p className="text-sm text-gray-400">Загружаю…</p>}
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
+                  {models.map((m) => (
+                    <Link
+                      key={m.id}
+                      to={`/catalog/models/${m.id}`}
+                      className="border border-gray-300 px-3 py-2 hover:border-makita hover:text-makita"
+                    >
+                      <div className="text-sm font-semibold">{m.name}</div>
+                      <div className="text-xs text-gray-400">{m.partsCount} поз.</div>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
+            {!activeCategory && (
+              <p className="pt-6 text-sm text-gray-400">
+                Выберите категорию слева или воспользуйтесь поиском
+              </p>
+            )}
+          </div>
         </div>
       )}
 
-      {selectedPart && (
-        <PartEditor part={selectedPart} onClose={() => setSelectedPart(null)} />
-      )}
+      {editPartId !== null && <PartEditor partId={editPartId} onClose={() => setEditPartId(null)} />}
     </div>
   );
 };

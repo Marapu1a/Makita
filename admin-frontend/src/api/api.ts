@@ -1,139 +1,210 @@
-import axios from "axios";
+// Единый API-клиент админки.
+// Авторизация — httpOnly-кука (ставит бэкенд); на 401 уводим на /login.
 
-const API_URL = import.meta.env.VITE_API_URL;
-
-interface Part {
-    id: number;
-    name: string;
-    part_number: string;
-    price: number;
-    availability: boolean;
+export class ApiError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
 }
 
-export interface Order {
-    id: number;
-    name: string;
-    phone: string;
-    status: string;
-    total_price: number;
-    created_at: string;
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await fetch(path, { credentials: 'include', ...init })
+
+  if (res.status === 401 && !window.location.pathname.startsWith('/login')) {
+    window.location.href = '/login'
+    throw new ApiError('Сессия истекла', 401)
+  }
+
+  const body = await res.json().catch(() => null)
+  if (!res.ok) {
+    throw new ApiError(body?.error || body?.message || `Ошибка сервера (${res.status})`, res.status)
+  }
+  return body as T
 }
 
-const api = axios.create({
-    baseURL: API_URL,
-    headers: {
-        "Content-Type": "application/json",
-    },
-    withCredentials: true,
-});
+function get<T>(path: string): Promise<T> {
+  return request<T>(path)
+}
 
-// --- Функции API ---
+function send<T>(method: string, path: string, body?: unknown): Promise<T> {
+  return request<T>(path, {
+    method,
+    headers: body !== undefined ? { 'content-type': 'application/json' } : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+}
 
-// Авторизация (получить токен)
-export const login = async (login: string, password: string) => {
-    const response = await api.post("/api/admin/login", { login, password });
-    return response.data.token;
-};
+// ─── Типы ────────────────────────────────────────────────
 
-// Получить список категорий
-export const fetchCategories = async (parentId: number | null = null) => {
-    const response = await api.get("/api/admin/categories", {
-        params: parentId !== null ? { parent_id: parentId } : {},
-    });
-    return response.data.data;
-};
+export interface OrderRow {
+  id: number
+  name: string
+  phone: string
+  status: string
+  totalPrice: number
+  itemsCount: number
+  createdAt: string
+}
 
-// Получить список моделей по категории
-export const fetchModelsByCategory = async (categoryId: number) => {
-    const response = await api.get(`/api/admin/models?category_id=${categoryId}`);
-    return response.data.data;
-};
+export interface OrderDetail {
+  id: number
+  name: string
+  phone: string
+  email: string
+  deliveryMethod: string
+  transportCompany: string | null
+  city: string | null
+  street: string | null
+  house: string | null
+  apartment: string | null
+  comment: string | null
+  status: string
+  totalPrice: number
+  createdAt: string
+  items: {
+    id: number
+    quantity: number
+    price: number
+    partNumber: string
+    partName: string
+    partSlug: string | null
+    models: string[]
+  }[]
+}
 
-// Получить детали по модели
-export const fetchPartsByModel = async (modelId: number) => {
-    const response = await api.get(`/api/admin/parts/model/${modelId}`);
-    return response.data.data;
-};
+export interface CategoryNode {
+  id: number
+  name: string
+  parentId: number | null
+  modelsCount: number
+}
 
-// Обновить деталь
-export const updatePart = async (id: number, updatedFields: Partial<Part>) => {
-    const response = await api.patch(`/api/admin/parts/${id}`, updatedFields);
-    return response.data;
-};
+export interface ModelRow {
+  id: number
+  name: string
+  slug: string | null
+  partsCount: number
+}
 
-// --- Заказы ---
+export interface ModelDetail {
+  id: number
+  name: string
+  slug: string | null
+  seoTitle: string | null
+  seoDescription: string | null
+  h1: string | null
+  content: string | null
+  isIndexable: boolean
+  category: { id: number; name: string; slug: string | null }
+  parts: { number: number; id: number; partNumber: string; name: string | null; price: number; availability: boolean }[]
+}
 
-// Получить список заказов
-export const fetchOrders = async (status?: string): Promise<Order[]> => {
-    const token = localStorage.getItem("token");
+export interface PartDetail {
+  id: number
+  partNumber: string
+  name: string | null
+  price: number
+  availability: boolean
+  quantity: number
+  slug: string | null
+  updatedAt: string | null
+  usedIn: { modelId: number; modelName: string; category: string; number: number }[]
+}
 
-    const response = await api.get("/api/admin/orders", {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-        params: status ? { status } : {},
-    });
+export interface SearchResult {
+  models: { id: number; name: string; category: string }[]
+  parts: { id: number; partNumber: string; name: string | null; price: number; availability: boolean }[]
+}
 
-    const data = response.data?.data;
+export interface Summary {
+  newOrders: number
+  ordersWeek: number
+  partsTotal: number
+  partsNoPrice: number
+  modelsTotal: number
+  lastPriceRunAt: string | null
+  lastBackupAt: string | null
+  lastBackupName: string | null
+}
 
-    if (!Array.isArray(data)) {
-        console.error("Ожидался массив заказов, но пришло:", data);
-        return [];
-    }
+export interface PricesStatus {
+  files: Record<'result' | 'site', { uploaded: boolean; uploadedAt: string | null; size: number | null }>
+  lastRunAt: string | null
+  running: boolean
+}
 
-    return data;
-};
+// ─── Auth ────────────────────────────────────────────────
 
-// Обновить статус заказа
-export const updateOrderStatus = async (orderId: number, status: string) => {
-    const token = localStorage.getItem("token");
+export const login = (loginStr: string, password: string) =>
+  send<{ success: true }>('POST', '/api/v2/admin/login', { login: loginStr, password })
 
-    const response = await api.patch(
-        `/api/admin/orders/${orderId}`,
-        { status },
-        {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        }
-    );
+export const logout = () => send<{ success: true }>('POST', '/api/v2/admin/logout')
 
-    return response.data;
-};
+export const checkSession = () => get<{ success: true }>('/api/v2/admin/me')
 
-// Заказы по ID
-export const getOrderById = async (id: number) => {
-    const token = localStorage.getItem("token");
-    const response = await api.get(`/api/admin/orders/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-    });
-    return response.data.data;
-};
+// ─── Заказы ──────────────────────────────────────────────
 
-// Загрузка файла цен: kind = 'result' (основной) | 'site' (выгрузка центрального сайта)
-export const uploadPriceFile = async (file: File, kind: 'result' | 'site' = 'result') => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('kind', kind);
+export const fetchOrders = (params: {
+  status?: string
+  phone?: string
+  from?: string
+  to?: string
+  page?: number
+  limit?: number
+}) => {
+  const qs = new URLSearchParams()
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== '') qs.set(k, String(v))
+  }
+  return get<{ data: OrderRow[]; total: number; page: number; limit: number }>(`/api/v2/admin/orders/?${qs}`)
+}
 
-    const res = await fetch(`${API_URL}/api/upload-price`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-    });
-    if (!res.ok) throw new Error('upload failed');
-    return res.json();
-};
+export const fetchOrder = (id: number) => get<{ data: OrderDetail }>(`/api/v2/admin/orders/${id}`)
 
-// Запуск обновления базы — возвращает отчёт скрипта
-export const updatePrices = async (): Promise<{ message: string; report?: string }> => {
-    const res = await fetch(`${API_URL}/api/update-prices`, {
-        method: 'POST',
-        credentials: 'include',
-    });
-    const data = await res.json();
-    if (!res.ok) throw Object.assign(new Error(data.message || 'update failed'), { report: data.report });
-    return data;
-};
+export const updateOrderStatus = (id: number, status: string) =>
+  send<{ data: { id: number; status: string } }>('PATCH', `/api/v2/admin/orders/${id}`, { status })
 
-export default api;
+// ─── Каталог ─────────────────────────────────────────────
+
+export const searchCatalog = (q: string) =>
+  get<{ data: SearchResult }>(`/api/v2/admin/catalog/search?q=${encodeURIComponent(q)}`)
+
+export const fetchCategories = () => get<{ data: CategoryNode[] }>('/api/v2/admin/catalog/categories')
+
+export const fetchCategoryModels = (id: number) =>
+  get<{ data: ModelRow[] }>(`/api/v2/admin/catalog/categories/${id}/models`)
+
+export const fetchModel = (id: number) => get<{ data: ModelDetail }>(`/api/v2/admin/catalog/models/${id}`)
+
+export const updateModel = (
+  id: number,
+  fields: Partial<Pick<ModelDetail, 'name' | 'seoTitle' | 'seoDescription' | 'h1' | 'content' | 'isIndexable'>>
+) => send<{ data: ModelDetail }>('PATCH', `/api/v2/admin/catalog/models/${id}`, fields)
+
+export const fetchPart = (id: number) => get<{ data: PartDetail }>(`/api/v2/admin/catalog/parts/${id}`)
+
+export const updatePart = (
+  id: number,
+  fields: Partial<Pick<PartDetail, 'partNumber' | 'name' | 'price' | 'availability' | 'quantity'>>
+) => send<{ data: PartDetail }>('PATCH', `/api/v2/admin/catalog/parts/${id}`, fields)
+
+// ─── Цены / система ──────────────────────────────────────
+
+export const fetchSummary = () => get<{ data: Summary }>('/api/v2/admin/system/summary')
+
+export const fetchPricesStatus = () => get<{ data: PricesStatus }>('/api/v2/admin/prices/status')
+
+export const uploadPriceFile = async (kind: 'result' | 'site', file: File) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return request<{ success: true; message: string }>(`/api/v2/admin/prices/upload/${kind}`, {
+    method: 'POST',
+    body: fd,
+  })
+}
+
+export const runPricesUpdate = () => send<{ success: true; report: string }>('POST', '/api/v2/admin/prices/run')
+
+export const runBackup = () => send<{ success: true; message: string }>('POST', '/api/v2/admin/system/backup')

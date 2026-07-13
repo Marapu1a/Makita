@@ -1,128 +1,137 @@
-import { useState } from "react";
-import { updatePart } from "../api/api";
-
-interface Part {
-  id: number;
-  name: string;
-  part_number: string;
-  price: number;
-  availability: boolean;
-}
+import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
+import { Link } from "react-router-dom";
+import { fetchPart, updatePart, ApiError } from "../api/api";
+import type { PartDetail } from "../api/api";
+import { useToast } from "./Toast";
 
 interface PartEditorProps {
-  part: Part;
+  partId: number;
   onClose: () => void;
+  onSaved?: () => void;
 }
 
-const PartEditor: React.FC<PartEditorProps> = ({ part, onClose }) => {
-  const [editedPart, setEditedPart] = useState<Part>(part);
-  const [isEditing, setIsEditing] = useState(false);
+const PartEditor = ({ partId, onClose, onSaved }: PartEditorProps) => {
+  const toast = useToast();
+  const [part, setPart] = useState<PartDetail | null>(null);
+  const [partNumber, setPartNumber] = useState("");
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [availability, setAvailability] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = async () => {
-    try {
-      await updatePart(editedPart.id, {
-        part_number: editedPart.part_number,
-        name: editedPart.name,
-        price: editedPart.price,
-        availability: editedPart.availability,
+  useEffect(() => {
+    fetchPart(partId)
+      .then(({ data }) => {
+        setPart(data);
+        setPartNumber(data.partNumber);
+        setName(data.name ?? "");
+        setPrice(String(Math.round(data.price)));
+        setAvailability(data.availability);
+      })
+      .catch(() => {
+        toast("error", "Не удалось загрузить деталь");
+        onClose();
       });
-      onClose(); // Закрываем по сохранению
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partId]);
+
+  const handleSave = async (e: FormEvent) => {
+    e.preventDefault();
+    const priceNum = price.trim() === "" ? 0 : Number(price);
+    if (!Number.isFinite(priceNum) || priceNum < 0) {
+      toast("error", "Некорректная цена");
+      return;
+    }
+    setSaving(true);
+    try {
+      await updatePart(partId, {
+        partNumber: partNumber.trim(),
+        name: name.trim(),
+        price: priceNum,
+        availability,
+      });
+      toast("success", `Деталь ${partNumber.trim()} сохранена`);
+      onSaved?.();
+      onClose();
     } catch (err) {
-      console.error("Ошибка при обновлении детали", err);
+      toast("error", err instanceof ApiError ? err.message : "Ошибка сохранения");
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50">
-      <div className="bg-white p-6 rounded shadow-lg w-96">
-        {!isEditing ? (
-          <>
-            <h3 className="text-lg font-semibold mb-4">{editedPart.name}</h3>
-            <div className="flex gap-4">
-              <button
-                className="bg-blue-500 text-white px-4 py-2 rounded"
-                onClick={() => setIsEditing(true)}
-              >
-                Редактировать
-              </button>
-              <button
-                className="bg-gray-300 px-4 py-2 rounded"
-                onClick={onClose}
-              >
-                Отмена
-              </button>
-            </div>
-          </>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto border border-ink bg-paper p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {!part ? (
+          <p className="text-sm text-gray-400">Загружаю…</p>
         ) : (
-          <div>
-            <label className="block mb-2">
-              Артикул:
-              <input
-                type="text"
-                className="w-full p-2 border rounded mt-1"
-                value={editedPart.part_number}
-                onChange={(e) =>
-                  setEditedPart({ ...editedPart, part_number: e.target.value })
-                }
-              />
-            </label>
+          <form onSubmit={handleSave}>
+            <h3 className="mb-4 text-lg font-bold">Деталь {part.partNumber}</h3>
 
-            <label className="block mb-2">
-              Название:
-              <input
-                type="text"
-                className="w-full p-2 border rounded mt-1"
-                value={editedPart.name}
-                onChange={(e) =>
-                  setEditedPart({ ...editedPart, name: e.target.value })
-                }
-              />
-            </label>
+            <div className="space-y-4">
+              <div>
+                <label className="field-label">Артикул</label>
+                <input type="text" value={partNumber} onChange={(e) => setPartNumber(e.target.value)} className="field" />
+              </div>
+              <div>
+                <label className="field-label">Название</label>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="field" />
+              </div>
+              <div>
+                <label className="field-label">Цена, ₽</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className="field"
+                />
+              </div>
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={availability}
+                  onChange={(e) => setAvailability(e.target.checked)}
+                  className="accent-[#008290]"
+                />
+                В наличии
+              </label>
+            </div>
 
-            <label className="block mb-2">
-              Цена:
-              <input
-                type="number"
-                className="w-full p-2 border rounded mt-1"
-                value={editedPart.price}
-                onChange={(e) =>
-                  setEditedPart({
-                    ...editedPart,
-                    price: parseFloat(e.target.value),
-                  })
-                }
-              />
-            </label>
+            {part.usedIn.length > 0 && (
+              <div className="mt-6">
+                <div className="field-label">Используется в моделях</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {part.usedIn.map((u) => (
+                    <Link
+                      key={u.modelId}
+                      to={`/catalog/models/${u.modelId}`}
+                      onClick={onClose}
+                      className="border border-gray-300 px-2 py-0.5 text-xs hover:border-makita hover:text-makita"
+                      title={u.category}
+                    >
+                      {u.modelName}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            <label className="flex items-center gap-2 mb-4">
-              <input
-                type="checkbox"
-                checked={editedPart.availability}
-                onChange={(e) =>
-                  setEditedPart({
-                    ...editedPart,
-                    availability: e.target.checked,
-                  })
-                }
-              />
-              Доступность
-            </label>
-
-            <div className="flex gap-4">
-              <button
-                className="bg-green-500 text-white px-4 py-2 rounded"
-                onClick={handleSave}
-              >
-                Сохранить
+            <div className="mt-6 flex gap-3">
+              <button type="submit" disabled={saving || !partNumber.trim()} className="btn-primary">
+                {saving ? "Сохраняю…" : "Сохранить"}
               </button>
-              <button
-                className="bg-gray-300 px-4 py-2 rounded"
-                onClick={() => setIsEditing(false)}
-              >
+              <button type="button" onClick={onClose} className="btn-ghost">
                 Отмена
               </button>
             </div>
-          </div>
+          </form>
         )}
       </div>
     </div>

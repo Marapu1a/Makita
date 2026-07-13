@@ -1,9 +1,18 @@
-type OrderModalProps = {
-  order: any;
-  onClose: () => void;
-};
+import type { OrderDetail } from "../api/api";
 
-const OrderModal = ({ order, onClose }: OrderModalProps) => {
+const fmtPrice = (v: number) => `${Math.round(v).toLocaleString("ru-RU")} ₽`;
+
+const Row = ({ label, value }: { label: string; value: string | null }) =>
+  value ? (
+    <div className="flex gap-2 text-sm">
+      <span className="w-28 shrink-0 text-xs font-semibold uppercase tracking-wider text-gray-500 leading-5">
+        {label}
+      </span>
+      <span>{value}</span>
+    </div>
+  ) : null;
+
+const OrderModal = ({ order, onClose }: { order: OrderDetail; onClose: () => void }) => {
   const fullAddress = [
     order.city,
     order.street && `ул. ${order.street}`,
@@ -14,84 +23,63 @@ const OrderModal = ({ order, onClose }: OrderModalProps) => {
     .join(", ");
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-bold mb-4">
-          Заказ #{order.id} — {order.name}
-        </h2>
-
-        <div className="mb-4 space-y-1 text-sm">
-          <p>
-            <span className="font-medium">Телефон:</span> {order.phone}
-          </p>
-          <p>
-            <span className="font-medium">Email:</span> {order.email}
-          </p>
-          <p>
-            <span className="font-medium">Дата:</span>{" "}
-            {new Date(order.created_at).toLocaleString()}
-          </p>
-          <p>
-            <span className="font-medium">Статус:</span> {order.status}
-          </p>
-          <p>
-            <span className="font-medium">Доставка:</span>{" "}
-            {order.delivery_method}
-          </p>
-          {order.transport_company && (
-            <p>
-              <span className="font-medium">ТК:</span> {order.transport_company}
-            </p>
-          )}
-          {fullAddress && (
-            <p>
-              <span className="font-medium">Адрес:</span> {fullAddress}
-            </p>
-          )}
-          {order.comment && (
-            <p>
-              <span className="font-medium">Комментарий:</span> {order.comment}
-            </p>
-          )}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-ink bg-paper p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-bold">
+              Заказ #{order.id} — {order.name}
+            </h2>
+            <div className="text-sm text-gray-500">
+              {new Date(order.createdAt).toLocaleString("ru-RU")} · {order.status}
+            </div>
+          </div>
+          <button onClick={onClose} className="btn-ghost px-3 py-1">
+            Закрыть
+          </button>
         </div>
 
-        <table className="w-full border text-sm mb-4">
+        <div className="mb-6 space-y-1">
+          <Row label="Телефон" value={order.phone} />
+          <Row label="Email" value={order.email} />
+          <Row label="Доставка" value={order.deliveryMethod} />
+          <Row label="ТК" value={order.transportCompany} />
+          <Row label="Адрес" value={fullAddress || null} />
+          <Row label="Комментарий" value={order.comment} />
+        </div>
+
+        <table className="tbl mb-4">
           <thead>
-            <tr className="bg-gray-100 text-left">
-              <th className="p-2 border">Категория / Модель</th>
-              <th className="p-2 border">Артикул</th>
-              <th className="p-2 border">Название</th>
-              <th className="p-2 border">Кол-во</th>
-              <th className="p-2 border">Цена</th>
-              <th className="p-2 border">Сумма</th>
+            <tr>
+              <th>Артикул</th>
+              <th>Название</th>
+              <th>Модели</th>
+              <th className="text-right">Кол-во</th>
+              <th className="text-right">Цена</th>
+              <th className="text-right">Сумма</th>
             </tr>
           </thead>
           <tbody>
-            {order.items.map((item: any) => (
-              <tr key={item.id} className="border-t">
-                <td className="p-2 border">
-                  {item.part?.model?.category?.name} / {item.part?.model?.name}
-                </td>
-                <td className="p-2 border">{item.part?.part_number}</td>
-                <td className="p-2 border">{item.part?.name}</td>
-                <td className="p-2 border">{item.quantity}</td>
-                <td className="p-2 border">{item.price} ₽</td>
-                <td className="p-2 border">{item.price * item.quantity} ₽</td>
+            {order.items.map((item) => (
+              <tr key={item.id}>
+                <td className="whitespace-nowrap font-semibold">{item.partNumber}</td>
+                <td>{item.partName}</td>
+                <td className="text-xs text-gray-500">{item.models.join(", ")}</td>
+                <td className="text-right">{item.quantity}</td>
+                <td className="text-right whitespace-nowrap">{fmtPrice(item.price)}</td>
+                <td className="text-right whitespace-nowrap">{fmtPrice(item.price * item.quantity)}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        <div className="text-right font-bold text-base mb-4">
-          Итого: {order.total_price} ₽
-        </div>
-
-        <button
-          onClick={onClose}
-          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-700"
-        >
-          Закрыть
-        </button>
+        <div className="text-right text-base font-bold">Итого: {fmtPrice(order.totalPrice)}</div>
       </div>
     </div>
   );

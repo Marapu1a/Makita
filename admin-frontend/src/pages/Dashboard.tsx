@@ -1,187 +1,199 @@
-import { useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { uploadPriceFile, updatePrices } from "../api/api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  fetchPricesStatus,
+  fetchSummary,
+  runBackup,
+  runPricesUpdate,
+  uploadPriceFile,
+  ApiError,
+} from "../api/api";
+import type { PricesStatus, Summary } from "../api/api";
+import { useToast } from "../components/Toast";
 
-type Kind = "result" | "site";
+const fmtDate = (iso: string | null) =>
+  iso
+    ? new Date(iso).toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "—";
 
-const FILE_NAMES: Record<Kind, string> = {
-  result: "result.xlsx",
-  site: "makita_site_update.xlsx",
-};
+const fmtSize = (bytes: number | null) =>
+  bytes === null ? "" : `${(bytes / 1024 / 1024).toFixed(1)} МБ`;
+
+const StatCard = ({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) => (
+  <div className="border border-gray-200 p-4">
+    <div className={`text-2xl font-bold ${accent ? "text-makita" : ""}`}>{value}</div>
+    <div className="mt-1 text-xs font-semibold uppercase tracking-wider text-gray-500">{label}</div>
+  </div>
+);
+
+const UPLOAD_META = {
+  result: {
+    title: "1. Основной файл — result.xlsx",
+    hint: "Лист «обновление цен и наличия», обязателен",
+  },
+  site: {
+    title: "2. Выгрузка центрального сайта — makita_site_update.xlsx",
+    hint: "Лист «Для импорта», применяется поверх, необязателен",
+  },
+} as const;
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const resultInputRef = useRef<HTMLInputElement | null>(null);
-  const siteInputRef = useRef<HTMLInputElement | null>(null);
-
-  const [uploaded, setUploaded] = useState<Record<Kind, boolean>>({
-    result: false,
-    site: false,
-  });
+  const toast = useToast();
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [prices, setPrices] = useState<PricesStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<string | null>(null);
+  // React 18: useRef<T | null>(null) => MutableRefObject<T | null>
+  const resultRef = useRef<HTMLInputElement | null>(null);
+  const siteRef = useRef<HTMLInputElement | null>(null);
 
-  const handleFile = async (kind: Kind, file: File | undefined | null) => {
+  const reload = useCallback(async () => {
+    try {
+      const [s, p] = await Promise.all([fetchSummary(), fetchPricesStatus()]);
+      setSummary(s.data);
+      setPrices(p.data);
+    } catch (e) {
+      if (!(e instanceof ApiError && e.status === 401)) {
+        toast("error", "Не удалось загрузить сводку");
+      }
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  const handleFile = async (kind: "result" | "site", file: File | undefined | null) => {
     if (!file) return;
-    if (file.name !== FILE_NAMES[kind]) {
-      alert(`❌ Неверное имя файла. Ожидается: ${FILE_NAMES[kind]}`);
-      return;
-    }
+    setBusy(true);
     try {
-      setBusy(true);
-      await uploadPriceFile(file, kind);
-      setUploaded((prev) => ({ ...prev, [kind]: true }));
-    } catch {
-      alert("❌ Ошибка при загрузке файла");
+      await uploadPriceFile(kind, file);
+      toast("success", `Файл ${file.name} загружен`);
+      await reload();
+    } catch (e) {
+      toast("error", e instanceof ApiError ? e.message : "Ошибка загрузки файла");
     } finally {
       setBusy(false);
     }
   };
 
-  const handleUpdatePrices = async () => {
+  const handleRun = async () => {
+    setBusy(true);
+    setReport(null);
     try {
-      setBusy(true);
-      setReport(null);
-      const data = await updatePrices();
-      setReport(data.report || data.message);
-      // после прогона файлы на сервере уезжают в backups — сбрасываем статусы
-      setUploaded({ result: false, site: false });
-    } catch (error: unknown) {
-      const err = error as { message?: string; report?: string };
-      setReport(`ОШИБКА: ${err.message || "неизвестная"}\n${err.report || ""}`);
+      const { report } = await runPricesUpdate();
+      setReport(report);
+      toast("success", "Цены обновлены");
+      await reload();
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Ошибка обновления";
+      setReport(msg);
+      toast("error", msg);
     } finally {
       setBusy(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
+  const handleBackup = async () => {
+    setBusy(true);
+    try {
+      const { message } = await runBackup();
+      toast("success", message);
+      await reload();
+    } catch (e) {
+      toast("error", e instanceof ApiError ? e.message : "Ошибка бэкапа");
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const uploadBlock = (
-    kind: Kind,
-    title: string,
-    hint: string,
-    // React 18: useRef<T | null>(null) => MutableRefObject<T | null>
-    inputRef: React.MutableRefObject<HTMLInputElement | null>
-  ) => (
-    <div className="flex flex-col items-center border rounded-lg p-4 bg-white shadow-sm w-full">
-      <h2 className="text-lg font-semibold mb-1">{title}</h2>
-      <p className="text-sm text-gray-500 mb-3">{hint}</p>
-      <input
-        type="file"
-        ref={inputRef}
-        hidden
-        accept=".xlsx"
-        onChange={(e) => {
-          handleFile(kind, e.target.files?.[0]);
-          e.target.value = "";
-        }}
-      />
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={busy}
-        className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
-      >
-        Выбрать и загрузить {FILE_NAMES[kind]}
-      </button>
-      {uploaded[kind] && (
-        <p className="mt-2 text-green-600 font-medium">✅ Загружен</p>
-      )}
-    </div>
-  );
-
-  return (
-    <div className="flex flex-col justify-center items-center min-h-screen space-y-8 p-4">
-      <h1 className="text-3xl font-bold mb-6">Админ-панель</h1>
-
-      <div className="flex space-x-4 mb-8">
-        <button
-          onClick={() => navigate("/catalog")}
-          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-700"
-        >
-          Каталог
-        </button>
-        <button
-          onClick={() => navigate("/orders")}
-          className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-700"
-        >
-          Заказы
-        </button>
-        <button
-          onClick={async () => {
-            try {
-              const res = await fetch(
-                `${import.meta.env.VITE_API_URL}/api/backup-db`,
-                {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                  },
-                }
-              );
-              const data = await res.json();
-              alert(`✅ ${data.message}`);
-            } catch {
-              alert("❌ Ошибка при создании бэкапа");
-            }
-          }}
-          className="px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
-        >
-          Сделать бэкап
-        </button>
-      </div>
-
-      <div className="w-full max-w-xl space-y-4">
-        <h2 className="text-xl font-semibold text-center">
-          🛠 Обновление цен и наличия
-        </h2>
-
-        {uploadBlock(
-          "result",
-          "1. Основной файл",
-          "result.xlsx — лист «обновление цен и наличия» (обязателен)",
-          resultInputRef
-        )}
-
-        {uploadBlock(
-          "site",
-          "2. Выгрузка центрального сайта",
-          "makita_site_update.xlsx — применяется поверх (необязателен)",
-          siteInputRef
-        )}
-
-        <div className="flex flex-col items-center">
-          <button
-            type="button"
-            onClick={handleUpdatePrices}
-            disabled={!uploaded.result || busy}
-            className="px-8 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 font-semibold"
-          >
-            {busy ? "Работаю..." : "3. Обновить базу"}
-          </button>
-          {!uploaded.result && (
-            <p className="mt-1 text-sm text-gray-400">
-              Сначала загрузите result.xlsx
-            </p>
+  const uploadBlock = (kind: "result" | "site", inputRef: React.MutableRefObject<HTMLInputElement | null>) => {
+    const file = prices?.files[kind];
+    return (
+      <div className="flex items-center justify-between border border-gray-200 p-4">
+        <div>
+          <div className="text-sm font-semibold">{UPLOAD_META[kind].title}</div>
+          <div className="mt-0.5 text-xs text-gray-500">{UPLOAD_META[kind].hint}</div>
+          {file?.uploaded && (
+            <div className="mt-1 text-xs font-semibold text-makita">
+              Загружен {fmtDate(file.uploadedAt)} · {fmtSize(file.size)}
+            </div>
           )}
         </div>
-
-        {report && (
-          <pre className="bg-gray-900 text-green-300 text-sm rounded-lg p-4 whitespace-pre-wrap w-full">
-            {report}
-          </pre>
-        )}
+        <input
+          ref={inputRef}
+          type="file"
+          hidden
+          accept=".xlsx"
+          onChange={(e) => {
+            handleFile(kind, e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+        <button onClick={() => inputRef.current?.click()} disabled={busy} className="btn-ghost shrink-0">
+          {file?.uploaded ? "Заменить" : "Загрузить"}
+        </button>
       </div>
+    );
+  };
 
-      <button
-        onClick={handleLogout}
-        className="mt-8 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-700"
-      >
-        Выйти
-      </button>
+  return (
+    <div className="space-y-10">
+      <section>
+        <h1 className="mb-4 text-2xl font-bold">Дашборд</h1>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          <StatCard label="Новые заказы" value={summary?.newOrders ?? "…"} accent={(summary?.newOrders ?? 0) > 0} />
+          <StatCard label="Заказы за 7 дней" value={summary?.ordersWeek ?? "…"} />
+          <StatCard label="Моделей" value={summary?.modelsTotal?.toLocaleString("ru-RU") ?? "…"} />
+          <StatCard label="Деталей" value={summary?.partsTotal?.toLocaleString("ru-RU") ?? "…"} />
+          <StatCard label="Без цены" value={summary?.partsNoPrice?.toLocaleString("ru-RU") ?? "…"} />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-1 text-lg font-bold">Обновление цен и наличия</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          Последний прогон: <span className="font-semibold text-ink">{fmtDate(summary?.lastPriceRunAt ?? null)}</span>
+        </p>
+        <div className="space-y-3">
+          {uploadBlock("result", resultRef)}
+          {uploadBlock("site", siteRef)}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleRun}
+              disabled={busy || !prices?.files.result.uploaded}
+              className="btn-primary"
+            >
+              {busy ? "Работаю…" : "3. Обновить базу"}
+            </button>
+            {!prices?.files.result.uploaded && (
+              <span className="text-sm text-gray-400">Сначала загрузите result.xlsx</span>
+            )}
+          </div>
+          {report && (
+            <pre className="whitespace-pre-wrap border border-gray-200 bg-gray-50 p-4 text-sm">{report}</pre>
+          )}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-1 text-lg font-bold">Резервная копия БД</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          Последний бэкап:{" "}
+          <span className="font-semibold text-ink">
+            {fmtDate(summary?.lastBackupAt ?? null)}
+            {summary?.lastBackupName ? ` (${summary.lastBackupName})` : ""}
+          </span>
+        </p>
+        <button onClick={handleBackup} disabled={busy} className="btn-ghost">
+          {busy ? "Работаю…" : "Сделать бэкап"}
+        </button>
+      </section>
     </div>
   );
 };

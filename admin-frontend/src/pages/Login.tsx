@@ -1,43 +1,78 @@
 import { useState } from "react";
-import { login } from "../api/api";
+import type { FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { login, ApiError } from "../api/api";
 
 const Login = () => {
   const [loginInput, setLoginInput] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
 
-  const handleLogin = async () => {
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
     try {
-      const token = await login(loginInput, password);
-      localStorage.setItem("token", token); // Сохраняем токен
-      window.location.href = "/dashboard"; // Редирект в админку
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      await login(loginInput, password);
+      navigate("/");
     } catch (err) {
-      setError("Неверный логин или пароль");
+      setError(
+        err instanceof ApiError && err.status === 429
+          ? "Слишком много попыток — подождите минуту"
+          : "Неверный логин или пароль"
+      );
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen">
-      <h1 className="text-2xl font-bold">Вход в админку</h1>
-      {error && <p className="text-red-500">{error}</p>}
-      <input
-        type="text"
-        placeholder="Логин"
-        value={loginInput}
-        onChange={(e) => setLoginInput(e.target.value)}
-        className="border p-2 mt-4"
-      />
-      <input
-        type="password"
-        placeholder="Пароль"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="border p-2 mt-2"
-      />
-      <button onClick={handleLogin} className="bg-blue-500 text-white p-2 mt-4">
-        Войти
-      </button>
+    <div className="flex min-h-screen items-center justify-center">
+      <form onSubmit={handleSubmit} className="w-80 border border-ink p-8">
+        <h1 className="mb-1 text-lg font-bold uppercase tracking-widest">
+          Makita-Remont
+        </h1>
+        <p className="mb-6 text-xs font-semibold uppercase tracking-wider text-gray-500">
+          Вход в админку
+        </p>
+
+        <label className="field-label" htmlFor="login">
+          Логин
+        </label>
+        <input
+          id="login"
+          type="text"
+          value={loginInput}
+          onChange={(e) => setLoginInput(e.target.value)}
+          className="field mb-4"
+          autoFocus
+          autoComplete="username"
+        />
+
+        <label className="field-label" htmlFor="password">
+          Пароль
+        </label>
+        <input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="field mb-6"
+          autoComplete="current-password"
+        />
+
+        {error && <p className="mb-4 text-sm text-red-700">{error}</p>}
+
+        <button
+          type="submit"
+          disabled={busy || !loginInput || !password}
+          className="btn-primary w-full"
+        >
+          {busy ? "Проверяю…" : "Войти"}
+        </button>
+      </form>
     </div>
   );
 };

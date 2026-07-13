@@ -1,40 +1,29 @@
-import {
-  BrowserRouter as Router,
-  Route,
-  Routes,
-  Navigate,
-} from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import Layout from "./components/Layout";
+import { ToastProvider } from "./components/Toast";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import Catalog from "./pages/Catalog";
 import OrdersPage from "./pages/OrdersPage";
+import Catalog from "./pages/Catalog";
+import ModelPage from "./pages/ModelPage";
 
-// Функция проверки токена
-const isAuthenticated = () => !!localStorage.getItem("token");
-
-const App = () => {
-  return (
-    <Router>
+// Гвард как таковой не нужен: каждая страница сразу дергает API,
+// клиент на 401 уводит на /login (см. api.ts)
+const App = () => (
+  <ToastProvider>
+    <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route
-          path="/dashboard"
-          element={isAuthenticated() ? <Dashboard /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/catalog/:categoryId?"
-          element={isAuthenticated() ? <Catalog /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/orders"
-          element={
-            isAuthenticated() ? <OrdersPage /> : <Navigate to="/login" />
-          }
-        />
-        <Route path="*" element={<Navigate to="/dashboard" />} />
+        <Route element={<Layout />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/catalog" element={<Catalog />} />
+          <Route path="/catalog/models/:id" element={<ModelPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
-    </Router>
-  );
-};
+    </BrowserRouter>
+  </ToastProvider>
+);
 
 export default App;
