@@ -9,6 +9,12 @@ import { UPLOADS_DIR, PRICE_ARCHIVE_DIR, PRICE_FILES } from './adminStorage.js'
 //   2. makita_site_update.xlsx (лист «Для импорта») — применяется ПОВЕРХ
 // Детали, отсутствующие в обоих файлах, не трогаются.
 // После успешного прогона файлы уезжают в архив с таймстампом.
+//
+// ВАЖНО: читаем потоковым ExcelJS.stream.xlsx.WorkbookReader, а не
+// Workbook.xlsx.readFile(). Обычный ридер строит в памяти полную DOM-модель
+// книги (стили, shared strings, все строки разом) — на result.xlsx (~47k строк)
+// это ушло за 490 МБ и убило процесс OOM-киллером на проде (957 МБ RAM, без свопа).
+// Потоковый ридер разбирает файл построчно и почти не держит его в памяти.
 
 interface ImportRow {
   part_number: string
@@ -17,78 +23,98 @@ interface ImportRow {
   quantity: number
 }
 
-function cellText(cell: ExcelJS.Cell): string {
-  const v = cell.value
-  if (v === null || v === undefined) return ''
-  if (typeof v === 'object') {
-    if ('result' in v) return String((v as ExcelJS.CellFormulaValue).result ?? '')
-    if ('richText' in v) return (v as ExcelJS.CellRichTextValue).richText.map((r) => r.text).join('')
-    return String(cell.text ?? '')
+function cellText(value: ExcelJS.CellValue): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'object') {
+    if ('result' in value) return String((value as ExcelJS.CellFormulaValue).result ?? '')
+    if ('richText' in value) return (value as ExcelJS.CellRichTextValue).richText.map((r) => r.text).join('')
+    return ''
   }
-  return String(v)
+  return String(value)
 }
 
-function cellNumber(cell: ExcelJS.Cell): number | null {
-  const t = cellText(cell).replace(',', '.').trim()
+function cellNumber(value: ExcelJS.CellValue): number | null {
+  const t = cellText(value).replace(',', '.').trim()
   if (!t) return null
   const n = Number(t)
   return Number.isFinite(n) ? n : null
 }
 
-async function readSheet(path: string, sheetName: string, requiredCols: string[]) {
-  const wb = new ExcelJS.Workbook()
-  await wb.xlsx.readFile(path)
-  const ws = wb.getWorksheet(sheetName)
-  if (!ws) {
-    const names = wb.worksheets.map((w) => `«${w.name}»`).join(', ')
-    throw new Error(`Нет листа «${sheetName}». Листы в файле: ${names}`)
+// exceljs WorkbookReader отдаёт Row только внутри итерации, поэтому разбор
+// строки — inline-колбэк на месте в каждой функции, без общей абстракции
+// (она усложнила бы типизацию без реальной выгоды при всего двух форматах файла).
+
+// Найти нужный лист среди листов книги.
+// ВАЖНО: в потоковом режиме (worksheets: 'emit') exceljs не успевает
+// сопоставить настоящие имена листов из workbook.xml — worksheet.name
+// приходит как заглушка "Sheet1", "Sheet2"... (проверено на реальных файлах).
+// Поэтому лист ищем не по имени, а по набору колонок в шапке — оно
+// однозначно отличает нужный лист от остальных в обоих форматах файлов.
+async function loadByColumns(path: string, requiredCols: string[], fileLabel: string): Promise<ImportRow[]> {
+  const reader = new ExcelJS.stream.xlsx.WorkbookReader(path, {
+    entries: 'emit',
+    sharedStrings: 'cache',
+    styles: 'ignore',
+    worksheets: 'emit',
+  })
+
+  const rows: ImportRow[] = []
+  let found = false
+
+  for await (const worksheet of reader) {
+    let colByName: Record<string, number> | null = null
+
+    for await (const row of worksheet) {
+      if (row.number === 1) {
+        const header: Record<string, number> = {}
+        row.eachCell((cell, colNumber) => {
+          header[cellText(cell.value).trim()] = colNumber
+        })
+        if (requiredCols.every((c) => c in header)) {
+          colByName = header
+          found = true
+        }
+        continue
+      }
+      if (!colByName) continue // не наш лист — строки пропускаем, не разбирая
+
+      rows.push(parseRow(row, colByName, requiredCols))
+    }
   }
 
-  // колонки ищем по заголовкам первой строки
-  const colByName: Record<string, number> = {}
-  ws.getRow(1).eachCell((cell, colNumber) => {
-    colByName[cellText(cell).trim()] = colNumber
-  })
-  const missing = requiredCols.filter((c) => !(c in colByName))
-  if (missing.length) {
-    throw new Error(`Нет колонок: ${missing.join(', ')}. Есть: ${Object.keys(colByName).join(', ')}`)
+  if (!found) throw new Error(`${fileLabel}: не найден лист с колонками ${requiredCols.join(', ')}`)
+  return rows
+}
+
+function parseRow(row: ExcelJS.Row, col: Record<string, number>, requiredCols: string[]): ImportRow {
+  const pn = cellText(row.getCell(col['Артикул']).value).trim()
+  // result.xlsx: доступно (наличие) Y/пусто + доступно (кол-во)
+  // makita_site_update.xlsx: только Количество (наличие = количество > 0)
+  if (requiredCols.includes('доступно (наличие)')) {
+    let price = cellNumber(row.getCell(col['цена со скидками']).value)
+    if (price !== null && price <= 0) price = null
+    const availability = cellText(row.getCell(col['доступно (наличие)']).value).trim().toUpperCase() === 'Y'
+    const quantity = Math.trunc(cellNumber(row.getCell(col['доступно (кол-во)']).value) ?? 0)
+    return { part_number: pn, price, availability, quantity }
   }
-  return { ws, colByName }
+  let price = cellNumber(row.getCell(col['Цена']).value)
+  if (price !== null && price <= 0) price = null
+  const quantity = Math.trunc(cellNumber(row.getCell(col['Количество']).value) ?? 0)
+  return { part_number: pn, price, availability: quantity > 0, quantity }
 }
 
 async function loadResult(path: string): Promise<ImportRow[]> {
-  const cols = ['Артикул', 'доступно (наличие)', 'доступно (кол-во)', 'цена со скидками']
-  const { ws, colByName } = await readSheet(path, 'обновление цен и наличия', cols)
-
-  const rows: ImportRow[] = []
-  ws.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return
-    const pn = cellText(row.getCell(colByName['Артикул'])).trim()
-    if (!pn) return
-    let price = cellNumber(row.getCell(colByName['цена со скидками']))
-    if (price !== null && price <= 0) price = null // нулевую цену не льём
-    const availability = cellText(row.getCell(colByName['доступно (наличие)'])).trim().toUpperCase() === 'Y'
-    const quantity = Math.trunc(cellNumber(row.getCell(colByName['доступно (кол-во)'])) ?? 0)
-    rows.push({ part_number: pn, price, availability, quantity })
-  })
-  return rows
+  const rows = await loadByColumns(
+    path,
+    ['Артикул', 'доступно (наличие)', 'доступно (кол-во)', 'цена со скидками'],
+    'result.xlsx'
+  )
+  return rows.filter((r) => r.part_number)
 }
 
 async function loadSite(path: string): Promise<ImportRow[]> {
-  const cols = ['Артикул', 'Количество', 'Цена']
-  const { ws, colByName } = await readSheet(path, 'Для импорта', cols)
-
-  const rows: ImportRow[] = []
-  ws.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return
-    const pn = cellText(row.getCell(colByName['Артикул'])).trim()
-    if (!pn) return
-    let price = cellNumber(row.getCell(colByName['Цена']))
-    if (price !== null && price <= 0) price = null
-    const quantity = Math.trunc(cellNumber(row.getCell(colByName['Количество'])) ?? 0)
-    rows.push({ part_number: pn, price, availability: quantity > 0, quantity })
-  })
-  return rows
+  const rows = await loadByColumns(path, ['Артикул', 'Количество', 'Цена'], 'makita_site_update.xlsx')
+  return rows.filter((r) => r.part_number)
 }
 
 async function applyRows(rows: ImportRow[], label: string, report: string[]): Promise<void> {
@@ -97,8 +123,9 @@ async function applyRows(rows: ImportRow[], label: string, report: string[]): Pr
   for (const r of rows) dedup.set(r.part_number, r)
   const unique = [...dedup.values()]
 
-  const updated = await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`
+  const updated = await prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`
       CREATE TEMP TABLE _price_import (
         part_number  VARCHAR PRIMARY KEY,
         price        DOUBLE PRECISION,
@@ -106,13 +133,20 @@ async function applyRows(rows: ImportRow[], label: string, report: string[]): Pr
         quantity     INTEGER
       ) ON COMMIT DROP
     `
-    await tx.$executeRaw`
-      INSERT INTO _price_import (part_number, price, availability, quantity)
-      SELECT part_number, price, availability, quantity
-      FROM jsonb_to_recordset(${JSON.stringify(unique)}::jsonb)
-        AS t(part_number VARCHAR, price DOUBLE PRECISION, availability BOOLEAN, quantity INTEGER)
-    `
-    return tx.$executeRaw`
+      // пачками по 5000 — один JSONB-параметр на полные 47k строк не разгонит
+      // память так, как DOM-парсер xlsx, но лишний повод не собирать гигантскую
+      // строку целиком незачем
+      const BATCH = 5000
+      for (let i = 0; i < unique.length; i += BATCH) {
+        const batch = unique.slice(i, i + BATCH)
+        await tx.$executeRaw`
+        INSERT INTO _price_import (part_number, price, availability, quantity)
+        SELECT part_number, price, availability, quantity
+        FROM jsonb_to_recordset(${JSON.stringify(batch)}::jsonb)
+          AS t(part_number VARCHAR, price DOUBLE PRECISION, availability BOOLEAN, quantity INTEGER)
+      `
+      }
+      return tx.$executeRaw`
       UPDATE parts p
       SET price        = ROUND(COALESCE(i.price, p.price)),
           availability = i.availability,
@@ -121,7 +155,9 @@ async function applyRows(rows: ImportRow[], label: string, report: string[]): Pr
       FROM _price_import i
       WHERE p.part_number = i.part_number
     `
-  })
+    },
+    { timeout: 5 * 60 * 1000 }
+  )
 
   report.push(`${label}: строк в файле ${rows.length}, обновлено деталей в БД: ${updated}, не найдено в базе: ${unique.length - updated}`)
 }
