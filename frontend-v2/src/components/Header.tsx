@@ -147,9 +147,8 @@ export default function Header() {
         <div className="px-5 py-4 w-full flex flex-col lg:flex-row lg:items-center gap-3">
           {/* Лого + бургер */}
           <div className="flex items-center justify-between lg:justify-start w-full lg:w-auto lg:mr-10">
-            <a href="/" className="flex items-baseline gap-2 group">
-              <span className="font-medium tracking-tight select-none" aria-hidden="true">/////</span>
-              <span className="text-xl font-medium uppercase tracking-wide">Снабтулс</span>
+            <a href="/" className="flex items-center gap-3">
+              <img src="/images/brand/snabtools-logo.png" alt="Снабтулс" className="h-14 w-auto" />
               <span className="hidden sm:inline text-[11px] uppercase tracking-wider text-white/70">
                 запчасти Makita
               </span>

@@ -41,6 +41,10 @@ const categories = sidebar ? await getCategories() : []
     {canonical && <meta property="og:url" content={canonical} />}
     <meta property="og:site_name" content="Запчасти Makita — makita-remont.ru" />
     <meta property="og:locale" content="ru_RU" />
+    <meta property="og:image" content={`${SITE}/images/brand/og-image.jpg`} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
 
     <link rel="icon" href="/favicon.ico" />
     <slot name="head" />
@@ -84,8 +88,8 @@ const categories = sidebar ? await getCategories() : []
 
     <footer class="border-t border-ink mt-20">
       <div class="px-5 py-8 flex flex-col gap-4 text-sm">
-        <div class="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-8">
-          <span class="font-medium uppercase tracking-wider"><span class="text-makita">/////</span> Снабтулс</span>
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-8">
+          <img src="/images/brand/snabtools-logo.png" alt="Снабтулс" class="h-7 w-auto" />
           <a href="/privacy-policy" class="border-b border-ink hover:border-transparent transition-colors w-fit">
             Политика конфиденциальности
           </a>
