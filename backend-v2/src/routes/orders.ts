@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { prisma } from '../db.js'
+import { sendOrderNotification } from '../lib/mailer.js'
 
 const DELIVERY_MAP: Record<string, 'PICKUP' | 'DELIVERY' | 'REGION_SHIPPING'> = {
   'Самовывоз': 'PICKUP',
@@ -126,6 +127,27 @@ export const ordersRoutes: FastifyPluginAsync = async (fastify) => {
           items: { create: items },
         },
       })
+
+      // письмо — уведомление менеджера, не часть транзакции заказа: если SMTP
+      // лёг или не настроен, заказ всё равно должен считаться оформленным
+      sendOrderNotification({
+        id: order.id,
+        name: order.name,
+        phone: order.phone,
+        email: order.email,
+        deliveryLabel: b.delivery_method,
+        transportCompany: order.transportCompany,
+        city: order.city,
+        street: order.street,
+        house: order.house,
+        apartment: order.apartment,
+        comment: order.comment,
+        totalPrice: order.totalPrice,
+        items: items.map((it) => {
+          const p = byId.get(it.productId)!
+          return { partNumber: p.partNumber, name: p.name, quantity: it.quantity, price: it.price }
+        }),
+      }).catch((err) => fastify.log.error({ err, orderId: order.id }, 'Не удалось отправить письмо о заказе'))
 
       return reply.status(201).send({ success: true, orderId: order.id, totalPrice })
     }
