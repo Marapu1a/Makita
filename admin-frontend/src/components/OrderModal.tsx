@@ -24,11 +24,11 @@ const OrderModal = ({ order, onClose }: { order: OrderDetail; onClose: () => voi
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="order-print-root fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-ink bg-paper p-6"
+        className="order-print-sheet max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-ink bg-paper p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between">
@@ -40,9 +40,14 @@ const OrderModal = ({ order, onClose }: { order: OrderDetail; onClose: () => voi
               {new Date(order.createdAt).toLocaleString("ru-RU")} · {order.status}
             </div>
           </div>
-          <button onClick={onClose} className="btn-ghost px-3 py-1">
-            Закрыть
-          </button>
+          <div className="order-print-actions flex gap-2">
+            <button type="button" onClick={() => window.print()} className="btn-primary px-3 py-1">
+              Печать
+            </button>
+            <button type="button" onClick={onClose} className="btn-ghost px-3 py-1">
+              Закрыть
+            </button>
+          </div>
         </div>
 
         <div className="mb-6 space-y-1">
@@ -54,7 +59,15 @@ const OrderModal = ({ order, onClose }: { order: OrderDetail; onClose: () => voi
           <Row label="Комментарий" value={order.comment} />
         </div>
 
-        <table className="tbl mb-4">
+        <table className="order-print-table tbl mb-4">
+          <colgroup>
+            <col className="w-[15%]" />
+            <col className="w-[25%]" />
+            <col className="w-[28%]" />
+            <col className="w-[8%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+          </colgroup>
           <thead>
             <tr>
               <th>Артикул</th>
@@ -67,7 +80,7 @@ const OrderModal = ({ order, onClose }: { order: OrderDetail; onClose: () => voi
           </thead>
           <tbody>
             {order.items.map((item) => (
-              <tr key={item.id}>
+              <tr key={item.id} className="order-print-item">
                 <td className="whitespace-nowrap font-semibold">{item.partNumber}</td>
                 <td>{item.partName}</td>
                 <td className="text-xs text-gray-500">{item.models.join(", ")}</td>

@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { prisma } from '../db.js'
-import { sendOrderNotification } from '../lib/mailer.js'
+import { sendCustomerOrderConfirmation, sendOrderNotification } from '../lib/mailer.js'
 
 const DELIVERY_MAP: Record<string, 'PICKUP' | 'DELIVERY' | 'REGION_SHIPPING'> = {
   'Самовывоз': 'PICKUP',
@@ -74,6 +74,21 @@ export const ordersRoutes: FastifyPluginAsync = async (fastify) => {
       }
       const b = req.body
 
+      if (b.delivery_method !== 'Самовывоз') {
+        if (!b.city?.trim() || !b.street?.trim() || !b.house?.trim()) {
+          return reply.status(400).send({
+            success: false,
+            message: 'Для доставки укажите город, улицу и дом',
+          })
+        }
+      }
+      if (b.delivery_method === 'Отправка в регион' && !b.transport_company?.trim()) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Для отправки в регион выберите транспортную компанию',
+        })
+      }
+
       // схлопываем дубли одной детали в одну позицию
       const wanted = new Map<number, number>()
       for (const it of b.items) {
@@ -128,9 +143,7 @@ export const ordersRoutes: FastifyPluginAsync = async (fastify) => {
         },
       })
 
-      // письмо — уведомление менеджера, не часть транзакции заказа: если SMTP
-      // лёг или не настроен, заказ всё равно должен считаться оформленным
-      sendOrderNotification({
+      const notificationData = {
         id: order.id,
         name: order.name,
         phone: order.phone,
@@ -147,7 +160,24 @@ export const ordersRoutes: FastifyPluginAsync = async (fastify) => {
           const p = byId.get(it.productId)!
           return { partNumber: p.partNumber, name: p.name, quantity: it.quantity, price: it.price }
         }),
-      }).catch((err) => fastify.log.error({ err, orderId: order.id }, 'Не удалось отправить письмо о заказе'))
+      }
+
+      // Письма не являются частью транзакции заказа: сбой SMTP не должен
+      // отменять заказ. Отправки независимы — ошибка одной не мешает второй.
+      const mailJobs = [
+        { recipient: 'manager', promise: sendOrderNotification(notificationData) },
+        { recipient: 'customer', promise: sendCustomerOrderConfirmation(notificationData) },
+      ]
+      void Promise.allSettled(mailJobs.map((job) => job.promise)).then((results) => {
+        results.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            fastify.log.error(
+              { err: result.reason, orderId: order.id, recipient: mailJobs[index].recipient },
+              'Не удалось отправить письмо о заказе'
+            )
+          }
+        })
+      })
 
       return reply.status(201).send({ success: true, orderId: order.id, totalPrice })
     }

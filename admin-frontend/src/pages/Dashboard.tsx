@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   fetchPricesStatus,
   fetchSummary,
@@ -24,12 +25,34 @@ const fmtDate = (iso: string | null) =>
 const fmtSize = (bytes: number | null) =>
   bytes === null ? "" : `${(bytes / 1024 / 1024).toFixed(1)} МБ`;
 
-const StatCard = ({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) => (
-  <div className="border border-gray-200 p-4">
+const StatCard = ({
+  label,
+  value,
+  to,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  to: string;
+  accent?: boolean;
+}) => (
+  <Link
+    to={to}
+    className="group border border-gray-200 p-4 transition-colors hover:border-makita hover:bg-makita/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-makita"
+  >
     <div className={`text-2xl font-bold ${accent ? "text-makita" : ""}`}>{value}</div>
-    <div className="mt-1 text-xs font-semibold uppercase tracking-wider text-gray-500">{label}</div>
-  </div>
+    <div className="mt-1 text-xs font-semibold uppercase tracking-wider text-gray-500 group-hover:text-makita">
+      {label}
+    </div>
+  </Link>
 );
+
+const formatDateParam = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 const UPLOAD_META = {
   result: {
@@ -51,6 +74,8 @@ const Dashboard = () => {
   // React 18: useRef<T | null>(null) => MutableRefObject<T | null>
   const resultRef = useRef<HTMLInputElement | null>(null);
   const siteRef = useRef<HTMLInputElement | null>(null);
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
 
   const reload = useCallback(async () => {
     try {
@@ -147,11 +172,32 @@ const Dashboard = () => {
       <section>
         <h1 className="mb-4 text-2xl font-bold">Дашборд</h1>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-          <StatCard label="Новые заказы" value={summary?.newOrders ?? "…"} accent={(summary?.newOrders ?? 0) > 0} />
-          <StatCard label="Заказы за 7 дней" value={summary?.ordersWeek ?? "…"} />
-          <StatCard label="Моделей" value={summary?.modelsTotal?.toLocaleString("ru-RU") ?? "…"} />
-          <StatCard label="Деталей" value={summary?.partsTotal?.toLocaleString("ru-RU") ?? "…"} />
-          <StatCard label="Без цены" value={summary?.partsNoPrice?.toLocaleString("ru-RU") ?? "…"} />
+          <StatCard
+            label="Новые заказы"
+            value={summary?.newOrders ?? "…"}
+            to="/orders?status=%D0%9D%D0%BE%D0%B2%D1%8B%D0%B9"
+            accent={(summary?.newOrders ?? 0) > 0}
+          />
+          <StatCard
+            label="Заказы за 7 дней"
+            value={summary?.ordersWeek ?? "…"}
+            to={`/orders?from=${formatDateParam(weekAgo)}`}
+          />
+          <StatCard
+            label="Моделей"
+            value={summary?.modelsTotal?.toLocaleString("ru-RU") ?? "…"}
+            to="/catalog?view=models&sort=name&order=asc"
+          />
+          <StatCard
+            label="Деталей"
+            value={summary?.partsTotal?.toLocaleString("ru-RU") ?? "…"}
+            to="/catalog?view=parts&sort=partNumber&order=asc"
+          />
+          <StatCard
+            label="Без цены"
+            value={summary?.partsNoPrice?.toLocaleString("ru-RU") ?? "…"}
+            to="/catalog?view=parts&price=missing&sort=partNumber&order=asc"
+          />
         </div>
       </section>
 

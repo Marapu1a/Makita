@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   fetchOrder,
   fetchOrders,
@@ -43,14 +44,15 @@ const fmtPrice = (v: number) => `${Math.round(v).toLocaleString("ru-RU")} ₽`;
 
 const OrdersPage = () => {
   const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => Math.max(1, Number(searchParams.get("page")) || 1));
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState("");
-  const [phone, setPhone] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [status, setStatus] = useState(() => searchParams.get("status") || "");
+  const [phone, setPhone] = useState(() => searchParams.get("phone") || "");
+  const [from, setFrom] = useState(() => searchParams.get("from") || "");
+  const [to, setTo] = useState(() => searchParams.get("to") || "");
   const [modalOrder, setModalOrder] = useState<OrderDetail | null>(null);
 
   const load = useCallback(async () => {
@@ -69,6 +71,16 @@ const OrdersPage = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (phone) params.set("phone", phone);
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    if (page > 1) params.set("page", String(page));
+    setSearchParams(params, { replace: true });
+  }, [status, phone, from, to, page, setSearchParams]);
 
   // при смене фильтров возвращаемся на первую страницу
   const withReset = <T,>(setter: (v: T) => void) => (v: T) => {

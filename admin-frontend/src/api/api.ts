@@ -118,6 +118,23 @@ export interface SearchResult {
   parts: { id: number; partNumber: string; name: string | null; price: number; availability: boolean }[]
 }
 
+export interface CatalogModelRow {
+  id: number
+  name: string
+  slug: string | null
+  category: string
+  partsCount: number
+}
+
+export interface CatalogPartRow {
+  id: number
+  partNumber: string
+  name: string | null
+  price: number
+  availability: boolean
+  modelsCount: number
+}
+
 export interface Summary {
   newOrders: number
   ordersWeek: number
@@ -175,6 +192,37 @@ export const fetchCategories = () => get<{ data: CategoryNode[] }>('/api/v2/admi
 
 export const fetchCategoryModels = (id: number) =>
   get<{ data: ModelRow[] }>(`/api/v2/admin/catalog/categories/${id}/models`)
+
+export const fetchCatalogModels = (params: {
+  page?: number
+  limit?: number
+  sort?: string
+  order?: string
+}) => {
+  const qs = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') qs.set(key, String(value))
+  }
+  return get<{ data: CatalogModelRow[]; total: number; page: number; limit: number }>(
+    `/api/v2/admin/catalog/models?${qs}`
+  )
+}
+
+export const fetchCatalogParts = (params: {
+  page?: number
+  limit?: number
+  price?: string
+  sort?: string
+  order?: string
+}) => {
+  const qs = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') qs.set(key, String(value))
+  }
+  return get<{ data: CatalogPartRow[]; total: number; page: number; limit: number }>(
+    `/api/v2/admin/catalog/parts?${qs}`
+  )
+}
 
 export const fetchModel = (id: number) => get<{ data: ModelDetail }>(`/api/v2/admin/catalog/models/${id}`)
 

@@ -59,3 +59,75 @@
     @apply border-b border-gray-200 px-3 py-2;
   }
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  body {
+    background: #ffffff;
+    color: #000000;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .order-print-root,
+  .order-print-root * {
+    visibility: visible;
+  }
+
+  .order-print-root {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    background: #ffffff;
+    padding: 0;
+  }
+
+  .order-print-sheet {
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    overflow: visible;
+    border: 0;
+    padding: 0;
+  }
+
+  .order-print-actions {
+    display: none !important;
+  }
+
+  .order-print-table {
+    table-layout: fixed;
+    font-size: 9pt;
+  }
+
+  .order-print-table thead {
+    display: table-header-group;
+  }
+
+  .order-print-table th {
+    padding: 6px 5px;
+    font-size: 7.5pt;
+  }
+
+  .order-print-table td {
+    padding: 6px 5px;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  .order-print-item {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

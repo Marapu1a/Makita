@@ -65,6 +65,98 @@ export const adminCatalogRoutes: FastifyPluginAsync = async (fastify) => {
     }
   })
 
+  // GET /models — общий список моделей для перехода со сводки
+  fastify.get<{
+    Querystring: { page?: string; limit?: string; sort?: string; order?: string }
+  }>('/models', async (req, reply) => {
+    const page = Math.max(1, parseInt(req.query.page || '1'))
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '50')))
+    const sort = req.query.sort || 'name'
+    const order: Prisma.SortOrder = req.query.order === 'desc' ? 'desc' : 'asc'
+    if (!['name', 'id'].includes(sort)) return reply.status(400).send({ error: 'Неизвестная сортировка моделей' })
+
+    const orderBy: Prisma.ModelOrderByWithRelationInput =
+      sort === 'id' ? { id: order } : { name: order }
+    const [total, models] = await Promise.all([
+      prisma.model.count(),
+      prisma.model.findMany({
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          category: { select: { name: true } },
+          _count: { select: { diagramParts: true } },
+        },
+        orderBy,
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ])
+
+    return {
+      data: models.map((m) => ({
+        id: m.id,
+        name: m.name,
+        slug: m.slug,
+        category: m.category.name,
+        partsCount: m._count.diagramParts,
+      })),
+      total,
+      page,
+      limit,
+    }
+  })
+
+  // GET /parts — общий список деталей, включая фильтр «без цены»
+  fastify.get<{
+    Querystring: { page?: string; limit?: string; price?: string; sort?: string; order?: string }
+  }>('/parts', async (req, reply) => {
+    const page = Math.max(1, parseInt(req.query.page || '1'))
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '50')))
+    const sort = req.query.sort || 'partNumber'
+    const order: Prisma.SortOrder = req.query.order === 'desc' ? 'desc' : 'asc'
+    if (!['partNumber', 'name', 'price', 'id'].includes(sort)) {
+      return reply.status(400).send({ error: 'Неизвестная сортировка деталей' })
+    }
+    if (req.query.price && req.query.price !== 'missing') {
+      return reply.status(400).send({ error: 'Неизвестный фильтр цены' })
+    }
+
+    const where: Prisma.PartWhereInput = req.query.price === 'missing' ? { price: 0 } : {}
+    const orderBy: Prisma.PartOrderByWithRelationInput = { [sort]: order }
+    const [total, parts] = await Promise.all([
+      prisma.part.count({ where }),
+      prisma.part.findMany({
+        where,
+        select: {
+          id: true,
+          partNumber: true,
+          name: true,
+          price: true,
+          availability: true,
+          _count: { select: { diagramParts: true } },
+        },
+        orderBy,
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ])
+
+    return {
+      data: parts.map((p) => ({
+        id: p.id,
+        partNumber: p.partNumber,
+        name: p.name,
+        price: p.price,
+        availability: p.availability,
+        modelsCount: p._count.diagramParts,
+      })),
+      total,
+      page,
+      limit,
+    }
+  })
+
   // GET /models/:id — модель + SEO-поля + детали
   fastify.get<{ Params: { id: string } }>('/models/:id', { schema: { params: idParamsSchema } }, async (req, reply) => {
     const id = parseInt(req.params.id)
