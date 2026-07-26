@@ -5,14 +5,92 @@ import { fmtPrice } from '../lib/format'
 const TRANSPORT_COMPANIES = ['СДЭК', 'Почта России', 'DPD', 'Boxberry', 'ПЭК', 'Деловые Линии']
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+const MOSCOW_DELIVERY_COST = 350
+const PREPAYMENT_THRESHOLD = 2000
 
-async function createOrder(orderData: Record<string, unknown>) {
+type DeliveryZone = 'WITHIN_MKAD' | 'OUTSIDE_MKAD'
+
+interface OrderResult {
+  success: boolean
+  message?: string
+  orderId?: number
+  itemsTotal?: number
+  deliveryCost?: number | null
+  knownTotal?: number
+  finalTotalKnown?: boolean
+  deliveryMethod?: string
+  deliveryZone?: DeliveryZone | null
+}
+
+async function createOrder(orderData: Record<string, unknown>): Promise<OrderResult> {
   const res = await fetch('/api/v2/orders', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(orderData),
   })
   return res.json()
+}
+
+function OrderTerms({ itemsTotal }: { itemsTotal: number }) {
+  return (
+    <div className="border-l-4 border-amber-500 bg-amber-50 px-3 py-2 text-sm">
+      <p className="font-medium">Срок поставки запчастей — 2–5 рабочих дней.</p>
+      {itemsTotal >= PREPAYMENT_THRESHOLD && (
+        <p className="mt-1">
+          При сумме заказа от 2 000 ₽ может потребоваться предоплата. Необходимость и
+          размер предоплаты сообщит менеджер при подтверждении заказа.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function PricingSummary({
+  itemsTotal,
+  deliveryCost,
+  deliveryZone,
+  isRegion,
+  finalTotalKnown,
+}: {
+  itemsTotal: number
+  deliveryCost: number | null
+  deliveryZone?: DeliveryZone | null
+  isRegion?: boolean
+  finalTotalKnown: boolean
+}) {
+  const knownTotal = itemsTotal + (deliveryCost ?? 0)
+  return (
+    <div className="border-t border-ink pt-3 text-sm">
+      <div className="flex justify-between gap-4">
+        <span>Товары</span>
+        <span>{fmtPrice(itemsTotal)}</span>
+      </div>
+      {deliveryCost !== null && deliveryCost > 0 && (
+        <div className="mt-1 flex justify-between gap-4">
+          <span>Доставка</span>
+          <span>{fmtPrice(deliveryCost)}</span>
+        </div>
+      )}
+      {deliveryZone === 'OUTSIDE_MKAD' && (
+        <div className="mt-1 flex justify-between gap-4">
+          <span>Доплата за МКАД</span>
+          <span className="text-right">рассчитает менеджер (50 ₽/км)</span>
+        </div>
+      )}
+      {isRegion && (
+        <div className="mt-1 flex justify-between gap-4">
+          <span>Доставка</span>
+          <span className="text-right">рассчитает менеджер после звонка</span>
+        </div>
+      )}
+      <div className="mt-2 flex items-baseline justify-between gap-4 font-medium">
+        <span className="uppercase tracking-wider text-gray-500">
+          {finalTotalKnown ? 'Итого' : 'Известная сумма'}
+        </span>
+        <span className="text-xl">{fmtPrice(knownTotal)}</span>
+      </div>
+    </div>
+  )
 }
 
 // ─── Поле формы с лейблом, звёздочкой и ошибкой ─────────────
@@ -55,7 +133,7 @@ function OrderModal({
   totalPrice,
 }: {
   onClose: () => void
-  onSubmit: (data: Record<string, unknown>) => Promise<{ success: boolean; message?: string }>
+  onSubmit: (data: Record<string, unknown>) => Promise<OrderResult>
   totalPrice: number
 }) {
   const [formData, setFormData] = useState({
@@ -65,6 +143,7 @@ function OrderModal({
     phone: '',
     email: '',
     delivery_method: 'Самовывоз',
+    delivery_zone: 'WITHIN_MKAD' as DeliveryZone,
     transport_company: '',
     city: '',
     street: '',
@@ -108,10 +187,10 @@ function OrderModal({
     else if (formData.phone.replace(/\D/g, '').length !== 11) e.phone = 'Введите номер полностью'
     if (!formData.email.trim()) e.email = 'Укажите email'
     else if (!EMAIL_RE.test(formData.email)) e.email = 'Некорректный email'
-    if (formData.delivery_method === 'Отправка в регион' && !formData.transport_company)
-      e.transport_company = 'Выберите транспортную компанию'
-    if (formData.delivery_method !== 'Самовывоз') {
+    if (formData.delivery_method === 'Отправка в регион') {
       if (!formData.city.trim()) e.city = 'Укажите город'
+    }
+    if (formData.delivery_method === 'Доставка') {
       if (!formData.street.trim()) e.street = 'Укажите улицу'
       if (!formData.house.trim()) e.house = 'Укажите дом'
     }
@@ -147,7 +226,12 @@ function OrderModal({
     }
   }
 
-  const needAddress = formData.delivery_method !== 'Самовывоз'
+  const isMoscowDelivery = formData.delivery_method === 'Доставка'
+  const isRegion = formData.delivery_method === 'Отправка в регион'
+  const selectedDeliveryCost = isMoscowDelivery ? MOSCOW_DELIVERY_COST : formData.delivery_method === 'Самовывоз' ? 0 : null
+  const finalTotalKnown =
+    formData.delivery_method === 'Самовывоз' ||
+    (isMoscowDelivery && formData.delivery_zone === 'WITHIN_MKAD')
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 overflow-y-auto p-4">
@@ -176,26 +260,48 @@ function OrderModal({
         <Field label="Способ получения" required>
           <select name="delivery_method" value={formData.delivery_method} onChange={handleChange} className={inputCls()}>
             <option value="Самовывоз">Самовывоз</option>
-            <option value="Доставка">Доставка</option>
-            <option value="Отправка в регион">Отправка в регион</option>
+            <option value="Доставка">Доставка по Москве</option>
+            <option value="Отправка в регион">Отправка в другой город</option>
           </select>
         </Field>
 
-        {formData.delivery_method === 'Отправка в регион' && (
-          <Field label="Транспортная компания" required error={errors.transport_company}>
-            <select name="transport_company" value={formData.transport_company} onChange={handleChange} className={inputCls(errors.transport_company)}>
+        {isMoscowDelivery && (
+          <>
+            <Field label="Зона доставки" required>
+              <select name="delivery_zone" value={formData.delivery_zone} onChange={handleChange} className={inputCls()}>
+                <option value="WITHIN_MKAD">В пределах МКАД — 350 ₽</option>
+                <option value="OUTSIDE_MKAD">За МКАД — 350 ₽ + 50 ₽/км</option>
+              </select>
+            </Field>
+            <p className="mb-3 text-xs text-gray-500">
+              Расстояние за МКАД и доплату рассчитает менеджер.
+            </p>
+          </>
+        )}
+
+        {isRegion && (
+          <>
+          <Field label="Город" required error={errors.city}>
+            <input type="text" name="city" autoComplete="address-level2" value={formData.city} onChange={handleChange} className={inputCls(errors.city)} />
+          </Field>
+          <Field label="Транспортная компания">
+            <select name="transport_company" value={formData.transport_company} onChange={handleChange} className={inputCls()}>
               <option value="">— выберите —</option>
               {TRANSPORT_COMPANIES.map((company) => (
                 <option key={company} value={company}>{company}</option>
               ))}
             </select>
           </Field>
+          <p className="mb-3 text-xs text-gray-500">
+            Стоимость отправки рассчитает менеджер после звонка.
+          </p>
+          </>
         )}
 
-        {needAddress && (
+        {isMoscowDelivery && (
           <>
-            <Field label="Город" required error={errors.city}>
-              <input type="text" name="city" autoComplete="address-level2" value={formData.city} onChange={handleChange} className={inputCls(errors.city)} />
+            <Field label="Город">
+              <input type="text" value="Москва" readOnly className={`${inputCls()} bg-gray-50`} />
             </Field>
             <div className="grid grid-cols-4 gap-3">
               <div className="col-span-2">
@@ -217,9 +323,15 @@ function OrderModal({
           <textarea name="comment" rows={2} value={formData.comment} onChange={handleChange} className={inputCls()} />
         </Field>
 
-        <div className="flex items-baseline justify-between border-t border-ink pt-4 mt-2 mb-4">
-          <span className="text-sm uppercase tracking-wider text-gray-500">Итого</span>
-          <span className="text-xl font-medium">{fmtPrice(totalPrice)}</span>
+        <div className="mt-2 mb-4">
+          <PricingSummary
+            itemsTotal={totalPrice}
+            deliveryCost={selectedDeliveryCost}
+            deliveryZone={isMoscowDelivery ? formData.delivery_zone : null}
+            isRegion={isRegion}
+            finalTotalKnown={finalTotalKnown}
+          />
+          <div className="mt-3"><OrderTerms itemsTotal={totalPrice} /></div>
         </div>
 
         {serverError && <p className="text-sm text-red-600 mb-3">{serverError}</p>}
@@ -249,16 +361,28 @@ function OrderModal({
 
 // ─── Подтверждение заказа ───────────────────────────────────
 
-function OrderConfirmationModal({ cart, onClose }: { cart: CartItem[]; onClose: () => void }) {
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-
+function OrderConfirmationModal({
+  cart,
+  order,
+  onClose,
+}: {
+  cart: CartItem[]
+  order: OrderResult
+  onClose: () => void
+}) {
+  const itemsTotal =
+    order.itemsTotal ?? cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const isRegion = order.deliveryMethod === 'Отправка в регион' || order.deliveryMethod === 'Отправка в другой город'
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white border border-ink p-6 w-full max-w-2xl">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white border border-ink p-6 w-full max-w-2xl max-h-[95vh] overflow-y-auto">
         <h2 className="text-lg font-medium uppercase tracking-wider mb-2">Заказ принят</h2>
         <p className="mb-5 text-sm text-gray-600">
-          Спасибо! Наш менеджер свяжется с вами в ближайшее время.
+          Заказ #{order.orderId} принят. Наш менеджер свяжется с вами в ближайшее время.
         </p>
+        {order.deliveryMethod && (
+          <p className="mb-4 text-sm"><strong>Способ получения:</strong> {order.deliveryMethod}</p>
+        )}
 
         <table className="w-full text-sm mb-4">
           <thead>
@@ -283,7 +407,14 @@ function OrderConfirmationModal({ cart, onClose }: { cart: CartItem[]; onClose: 
           </tbody>
         </table>
 
-        <div className="text-right font-medium text-lg mb-6">Итого: {fmtPrice(total)}</div>
+        <PricingSummary
+          itemsTotal={itemsTotal}
+          deliveryCost={order.deliveryCost ?? null}
+          deliveryZone={order.deliveryZone}
+          isRegion={isRegion}
+          finalTotalKnown={order.finalTotalKnown ?? false}
+        />
+        <div className="my-4"><OrderTerms itemsTotal={itemsTotal} /></div>
 
         <div className="text-right">
           <button
@@ -303,7 +434,7 @@ function OrderConfirmationModal({ cart, onClose }: { cart: CartItem[]; onClose: 
 export default function CartIsland() {
   const { cartItems, updateQuantity, removeFromCart, clearCart } = useCart()
   const [isOrderModalOpen, setOrderModalOpen] = useState(false)
-  const [confirmedCart, setConfirmedCart] = useState<CartItem[] | null>(null)
+  const [confirmation, setConfirmation] = useState<{ cart: CartItem[]; order: OrderResult } | null>(null)
   const [mounted, setMounted] = useState(false)
 
   // Ждём гидрацию — на сервере корзина пустая, иначе mismatch
@@ -313,7 +444,7 @@ export default function CartIsland() {
 
   const handleOrderSubmit = async (
     orderData: Record<string, unknown>
-  ): Promise<{ success: boolean; message?: string }> => {
+  ): Promise<OrderResult> => {
     try {
       // цены не отправляем: сервер берёт их из БД и сам считает сумму
       const result = await createOrder({
@@ -322,7 +453,7 @@ export default function CartIsland() {
       })
 
       if (result.success) {
-        setConfirmedCart([...cartItems])
+        setConfirmation({ cart: [...cartItems], order: result })
         clearCart()
         setOrderModalOpen(false)
         return { success: true }
@@ -419,17 +550,20 @@ export default function CartIsland() {
             </table>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-6">
-            <div className="text-lg">
-              <span className="text-sm uppercase tracking-wider text-gray-500 mr-3">Итого</span>
-              <span className="font-medium text-2xl">{fmtPrice(totalPrice)}</span>
+          <div className="mt-6">
+            <OrderTerms itemsTotal={totalPrice} />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-4">
+              <div className="text-lg">
+                <span className="text-sm uppercase tracking-wider text-gray-500 mr-3">Товары</span>
+                <span className="font-medium text-2xl">{fmtPrice(totalPrice)}</span>
+              </div>
+              <button
+                onClick={() => setOrderModalOpen(true)}
+                className="px-10 py-3 text-sm font-medium uppercase tracking-wider bg-makita text-white hover:bg-makita-dark transition-colors"
+              >
+                Оформить заказ
+              </button>
             </div>
-            <button
-              onClick={() => setOrderModalOpen(true)}
-              className="px-10 py-3 text-sm font-medium uppercase tracking-wider bg-makita text-white hover:bg-makita-dark transition-colors"
-            >
-              Оформить заказ
-            </button>
           </div>
 
           {isOrderModalOpen && (
@@ -442,8 +576,12 @@ export default function CartIsland() {
         </>
       )}
 
-      {confirmedCart && confirmedCart.length > 0 && (
-        <OrderConfirmationModal cart={confirmedCart} onClose={() => setConfirmedCart(null)} />
+      {confirmation && confirmation.cart.length > 0 && (
+        <OrderConfirmationModal
+          cart={confirmation.cart}
+          order={confirmation.order}
+          onClose={() => setConfirmation(null)}
+        />
       )}
     </div>
   )

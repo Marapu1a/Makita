@@ -183,7 +183,15 @@ const OrdersPage = () => {
                   ))}
                 </select>
               </td>
-              <td className="text-right whitespace-nowrap">{fmtPrice(order.totalPrice)}</td>
+              <td className="text-right whitespace-nowrap">
+                {order.finalTotalKnown ? (
+                  fmtPrice(order.knownTotal)
+                ) : (
+                  <span title="Окончательная стоимость доставки будет рассчитана менеджером">
+                    от {fmtPrice(order.knownTotal)}
+                  </span>
+                )}
+              </td>
               <td className="text-center">{order.itemsCount}</td>
               <td>
                 <button

@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { prisma } from '../db.js'
 import { sendCustomerOrderConfirmation, sendOrderNotification } from '../lib/mailer.js'
+import { MOSCOW_DELIVERY_COST, type DeliveryZone } from '../lib/orderPricing.js'
 
 const DELIVERY_MAP: Record<string, 'PICKUP' | 'DELIVERY' | 'REGION_SHIPPING'> = {
   'Самовывоз': 'PICKUP',
@@ -18,6 +19,7 @@ interface OrderBody {
   phone: string
   email: string
   delivery_method: string
+  delivery_zone?: DeliveryZone
   transport_company?: string
   city?: string
   street?: string
@@ -37,6 +39,7 @@ const orderBodySchema = {
     phone: { type: 'string', minLength: 5, maxLength: 32 },
     email: { type: 'string', minLength: 5, maxLength: 255, pattern: '^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$' },
     delivery_method: { type: 'string', enum: Object.keys(DELIVERY_MAP) },
+    delivery_zone: { type: 'string', enum: ['WITHIN_MKAD', 'OUTSIDE_MKAD'] },
     transport_company: { type: 'string', maxLength: 255 },
     city: { type: 'string', maxLength: 255 },
     street: { type: 'string', maxLength: 255 },
@@ -74,20 +77,46 @@ export const ordersRoutes: FastifyPluginAsync = async (fastify) => {
       }
       const b = req.body
 
-      if (b.delivery_method !== 'Самовывоз') {
-        if (!b.city?.trim() || !b.street?.trim() || !b.house?.trim()) {
+      if (b.delivery_method === 'Доставка') {
+        if (!b.delivery_zone) {
           return reply.status(400).send({
             success: false,
-            message: 'Для доставки укажите город, улицу и дом',
+            message: 'Укажите зону доставки по Москве',
+          })
+        }
+        if (!b.street?.trim() || !b.house?.trim()) {
+          return reply.status(400).send({
+            success: false,
+            message: 'Для доставки по Москве укажите улицу и дом',
           })
         }
       }
-      if (b.delivery_method === 'Отправка в регион' && !b.transport_company?.trim()) {
+      if (b.delivery_method === 'Отправка в регион' && !b.city?.trim()) {
         return reply.status(400).send({
           success: false,
-          message: 'Для отправки в регион выберите транспортную компанию',
+          message: 'Для отправки в другой город укажите город',
         })
       }
+
+      const deliveryZone = b.delivery_method === 'Доставка' ? b.delivery_zone! : null
+      const deliveryCost =
+        b.delivery_method === 'Самовывоз'
+          ? 0
+          : b.delivery_method === 'Доставка'
+            ? MOSCOW_DELIVERY_COST
+            : null
+      const transportCompany =
+        b.delivery_method === 'Отправка в регион' ? b.transport_company?.trim() || null : null
+      const city =
+        b.delivery_method === 'Доставка'
+          ? 'Москва'
+          : b.delivery_method === 'Отправка в регион'
+            ? b.city!.trim()
+            : null
+      const street = b.delivery_method === 'Доставка' ? b.street!.trim() : null
+      const house = b.delivery_method === 'Доставка' ? b.house!.trim() : null
+      const apartment =
+        b.delivery_method === 'Доставка' ? b.apartment?.trim() || null : null
 
       // схлопываем дубли одной детали в одну позицию
       const wanted = new Map<number, number>()
@@ -122,7 +151,7 @@ export const ordersRoutes: FastifyPluginAsync = async (fastify) => {
         quantity,
         price: Math.round(byId.get(partId)!.price),
       }))
-      const totalPrice = items.reduce((sum, it) => sum + it.price * it.quantity, 0)
+      const itemsTotal = items.reduce((sum, it) => sum + it.price * it.quantity, 0)
 
       // вложенный create — одна транзакция: заказ и позиции атомарны
       const order = await prisma.order.create({
@@ -131,13 +160,15 @@ export const ordersRoutes: FastifyPluginAsync = async (fastify) => {
           phone: b.phone.trim(),
           email: b.email.trim(),
           deliveryMethod: DELIVERY_MAP[b.delivery_method],
-          transportCompany: b.transport_company?.trim() || null,
-          city: b.city?.trim() || null,
-          street: b.street?.trim() || null,
-          house: b.house?.trim() || null,
-          apartment: b.apartment?.trim() || null,
+          deliveryZone,
+          deliveryCost,
+          transportCompany,
+          city,
+          street,
+          house,
+          apartment,
           comment: b.comment?.trim() || null,
-          totalPrice,
+          totalPrice: itemsTotal,
           status: 'NEW',
           items: { create: items },
         },
@@ -148,14 +179,21 @@ export const ordersRoutes: FastifyPluginAsync = async (fastify) => {
         name: order.name,
         phone: order.phone,
         email: order.email,
-        deliveryLabel: b.delivery_method,
+        deliveryLabel:
+          b.delivery_method === 'Доставка'
+            ? 'Доставка по Москве'
+            : b.delivery_method === 'Отправка в регион'
+              ? 'Отправка в другой город'
+              : b.delivery_method,
+        deliveryZone: order.deliveryZone,
+        deliveryCost: order.deliveryCost,
         transportCompany: order.transportCompany,
         city: order.city,
         street: order.street,
         house: order.house,
         apartment: order.apartment,
         comment: order.comment,
-        totalPrice: order.totalPrice,
+        itemsTotal: order.totalPrice,
         items: items.map((it) => {
           const p = byId.get(it.productId)!
           return { partNumber: p.partNumber, name: p.name, quantity: it.quantity, price: it.price }
@@ -179,7 +217,26 @@ export const ordersRoutes: FastifyPluginAsync = async (fastify) => {
         })
       })
 
-      return reply.status(201).send({ success: true, orderId: order.id, totalPrice })
+      const knownTotal = itemsTotal + (deliveryCost ?? 0)
+      const finalTotalKnown =
+        b.delivery_method === 'Самовывоз' ||
+        (b.delivery_method === 'Доставка' && deliveryZone === 'WITHIN_MKAD')
+
+      return reply.status(201).send({
+        success: true,
+        orderId: order.id,
+        itemsTotal,
+        deliveryCost,
+        knownTotal,
+        finalTotalKnown,
+        deliveryMethod:
+          b.delivery_method === 'Доставка'
+            ? 'Доставка по Москве'
+            : b.delivery_method === 'Отправка в регион'
+              ? 'Отправка в другой город'
+              : b.delivery_method,
+        deliveryZone,
+      })
     }
   )
 }

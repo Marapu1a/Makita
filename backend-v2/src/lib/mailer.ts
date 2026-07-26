@@ -1,4 +1,9 @@
 import nodemailer from 'nodemailer'
+import {
+  PREPAYMENT_THRESHOLD,
+  getDeliveryZoneLabel,
+  getOrderPricing,
+} from './orderPricing.js'
 
 // Уведомления о новом заказе менеджеру и покупателю. Учётные данные — почта
 // магазина; SMTP_USER используется как отправитель и как адрес менеджера
@@ -39,13 +44,15 @@ export interface OrderNotificationData {
   phone: string
   email: string
   deliveryLabel: string
+  deliveryZone?: string | null
+  deliveryCost?: number | null
   transportCompany?: string | null
   city?: string | null
   street?: string | null
   house?: string | null
   apartment?: string | null
   comment?: string | null
-  totalPrice: number
+  itemsTotal: number
   items: OrderNotificationItem[]
 }
 
@@ -62,6 +69,93 @@ function getAddress(order: OrderNotificationData): string {
   ]
     .filter(Boolean)
     .join(', ')
+}
+
+function buildDeliveryDetailsHtml(order: OrderNotificationData): string {
+  const zone = getDeliveryZoneLabel(order.deliveryZone)
+  const isRegion = order.deliveryLabel === 'Отправка в регион' || order.deliveryLabel === 'Отправка в другой город'
+  return `
+    ${zone ? `<div style="margin-bottom:5px"><strong>Зона доставки:</strong> ${esc(zone)}</div>` : ''}
+    ${
+      order.deliveryZone === 'OUTSIDE_MKAD'
+        ? '<div style="margin-bottom:5px"><strong>Доплата за МКАД:</strong> 50 ₽/км, расстояние и сумму рассчитает менеджер</div>'
+        : ''
+    }
+    ${
+      isRegion
+        ? '<div style="margin-bottom:5px"><strong>Стоимость доставки:</strong> рассчитает менеджер после звонка</div>'
+        : ''
+    }
+  `
+}
+
+function buildTotalsHtml(order: OrderNotificationData): string {
+  const pricing = getOrderPricing(
+    order.itemsTotal,
+    order.deliveryLabel,
+    order.deliveryZone,
+    order.deliveryCost
+  )
+  const isRegion = order.deliveryLabel === 'Отправка в регион' || order.deliveryLabel === 'Отправка в другой город'
+  return `
+    <div style="margin:14px 0 20px;text-align:right;line-height:1.7">
+      <div>Товары: <strong>${fmtPrice(pricing.itemsTotal)}</strong></div>
+      ${
+        pricing.deliveryCost !== null && pricing.deliveryCost > 0
+          ? `<div>Доставка: <strong>${fmtPrice(pricing.deliveryCost)}</strong></div>`
+          : ''
+      }
+      ${
+        order.deliveryZone === 'OUTSIDE_MKAD'
+          ? '<div>Доплата за МКАД: <strong>рассчитает менеджер (50 ₽/км)</strong></div>'
+          : ''
+      }
+      ${
+        isRegion
+          ? '<div>Доставка: <strong>рассчитает менеджер после звонка</strong></div>'
+          : ''
+      }
+      <div style="font-size:18px;font-weight:bold;margin-top:5px">
+        ${pricing.finalTotalKnown ? 'Итого' : 'Известная сумма'}: ${fmtPrice(pricing.knownTotal)}
+      </div>
+    </div>
+  `
+}
+
+function buildTermsHtml(order: OrderNotificationData): string {
+  return `
+    <div style="margin:18px 0;padding:12px 14px;background:#fff8e5;border-left:4px solid #d49b00">
+      <div><strong>Срок поставки запчастей — 2–5 рабочих дней.</strong></div>
+      ${
+        order.itemsTotal >= PREPAYMENT_THRESHOLD
+          ? '<div style="margin-top:6px">При сумме заказа от 2 000 ₽ может потребоваться предоплата. Необходимость и размер предоплаты сообщит менеджер при подтверждении заказа.</div>'
+          : ''
+      }
+    </div>
+  `
+}
+
+function buildTotalsText(order: OrderNotificationData): string[] {
+  const pricing = getOrderPricing(
+    order.itemsTotal,
+    order.deliveryLabel,
+    order.deliveryZone,
+    order.deliveryCost
+  )
+  const isRegion = order.deliveryLabel === 'Отправка в регион' || order.deliveryLabel === 'Отправка в другой город'
+  return [
+    `Товары: ${fmtPrice(pricing.itemsTotal)}`,
+    pricing.deliveryCost !== null && pricing.deliveryCost > 0
+      ? `Доставка: ${fmtPrice(pricing.deliveryCost)}`
+      : null,
+    order.deliveryZone === 'OUTSIDE_MKAD'
+      ? 'Доплата за МКАД: рассчитает менеджер (50 ₽/км)'
+      : null,
+    isRegion
+      ? 'Доставка: рассчитает менеджер после звонка'
+      : null,
+    `${pricing.finalTotalKnown ? 'Итого' : 'Известная сумма'}: ${fmtPrice(pricing.knownTotal)}`,
+  ].filter((line): line is string => Boolean(line))
 }
 
 function buildItemsHtml(order: OrderNotificationData): string {
@@ -108,16 +202,15 @@ function buildManagerHtml(order: OrderNotificationData): string {
         <tr><td style="padding:2px 10px 2px 0;color:#666">Телефон</td><td>${esc(order.phone)}</td></tr>
         <tr><td style="padding:2px 10px 2px 0;color:#666">Email</td><td>${esc(order.email)}</td></tr>
         <tr><td style="padding:2px 10px 2px 0;color:#666">Доставка</td><td>${esc(order.deliveryLabel)}</td></tr>
+        ${order.deliveryZone ? `<tr><td style="padding:2px 10px 2px 0;color:#666">Зона</td><td>${esc(getDeliveryZoneLabel(order.deliveryZone) || order.deliveryZone)}</td></tr>` : ''}
         ${order.transportCompany ? `<tr><td style="padding:2px 10px 2px 0;color:#666">ТК</td><td>${esc(order.transportCompany)}</td></tr>` : ''}
         ${address ? `<tr><td style="padding:2px 10px 2px 0;color:#666">Адрес</td><td>${esc(address)}</td></tr>` : ''}
         ${order.comment ? `<tr><td style="padding:2px 10px 2px 0;color:#666;vertical-align:top">Комментарий</td><td>${escMultiline(order.comment)}</td></tr>` : ''}
       </table>
 
       ${buildItemsTable(order)}
-
-      <p style="text-align:right;font-size:16px;font-weight:bold;margin-top:12px">
-        Итого: ${fmtPrice(order.totalPrice)}
-      </p>
+      ${buildTotalsHtml(order)}
+      ${buildTermsHtml(order)}
     </div>
   `
 }
@@ -136,6 +229,7 @@ function buildCustomerHtml(order: OrderNotificationData): string {
 
         <div style="margin:0 0 22px;padding:14px 16px;background:#f5f8f8;border-left:4px solid #008290">
           <div style="margin-bottom:5px"><strong>Способ получения:</strong> ${esc(order.deliveryLabel)}</div>
+          ${buildDeliveryDetailsHtml(order)}
           ${order.transportCompany ? `<div style="margin-bottom:5px"><strong>Транспортная компания:</strong> ${esc(order.transportCompany)}</div>` : ''}
           ${address ? `<div style="margin-bottom:5px"><strong>Адрес:</strong> ${esc(address)}</div>` : ''}
           <div style="margin-bottom:5px"><strong>Получатель:</strong> ${esc(order.name)}</div>
@@ -145,10 +239,8 @@ function buildCustomerHtml(order: OrderNotificationData): string {
         </div>
 
         ${buildItemsTable(order)}
-
-        <p style="text-align:right;font-size:18px;font-weight:bold;margin:16px 0 24px">
-          Итого: ${fmtPrice(order.totalPrice)}
-        </p>
+        ${buildTotalsHtml(order)}
+        ${buildTermsHtml(order)}
 
         <p style="margin:0 0 8px">Если потребуется уточнить заказ, просто ответьте на это письмо.</p>
         <p style="margin:0;color:#777;font-size:12px">
@@ -163,6 +255,13 @@ function buildCustomerText(order: OrderNotificationData): string {
   const address = getAddress(order)
   const details = [
     `Способ получения: ${order.deliveryLabel}`,
+    order.deliveryZone ? `Зона доставки: ${getDeliveryZoneLabel(order.deliveryZone)}` : null,
+    order.deliveryZone === 'OUTSIDE_MKAD'
+      ? 'Доплата за МКАД: 50 ₽/км, расстояние и сумму рассчитает менеджер'
+      : null,
+    order.deliveryLabel === 'Отправка в регион' || order.deliveryLabel === 'Отправка в другой город'
+      ? 'Стоимость доставки: рассчитает менеджер после звонка'
+      : null,
     order.transportCompany ? `Транспортная компания: ${order.transportCompany}` : null,
     address ? `Адрес: ${address}` : null,
     `Получатель: ${order.name}`,
@@ -187,7 +286,12 @@ function buildCustomerText(order: OrderNotificationData): string {
     'Состав заказа:',
     items,
     '',
-    `Итого: ${fmtPrice(order.totalPrice)}`,
+    ...buildTotalsText(order),
+    '',
+    'Срок поставки запчастей — 2–5 рабочих дней.',
+    order.itemsTotal >= PREPAYMENT_THRESHOLD
+      ? 'При сумме заказа от 2 000 ₽ может потребоваться предоплата. Необходимость и размер предоплаты сообщит менеджер при подтверждении заказа.'
+      : null,
     '',
     'Если потребуется уточнить заказ, просто ответьте на это письмо.',
     'Это автоматическое подтверждение получения заказа, а не подтверждение оплаты или резервирования товара.',

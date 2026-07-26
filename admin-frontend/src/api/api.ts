@@ -43,7 +43,10 @@ export interface OrderRow {
   name: string
   phone: string
   status: string
-  totalPrice: number
+  itemsTotal: number
+  deliveryCost: number | null
+  knownTotal: number
+  finalTotalKnown: boolean
   itemsCount: number
   createdAt: string
 }
@@ -54,6 +57,8 @@ export interface OrderDetail {
   phone: string
   email: string
   deliveryMethod: string
+  deliveryZone: string | null
+  deliveryCost: number | null
   transportCompany: string | null
   city: string | null
   street: string | null
@@ -61,7 +66,9 @@ export interface OrderDetail {
   apartment: string | null
   comment: string | null
   status: string
-  totalPrice: number
+  itemsTotal: number
+  knownTotal: number
+  finalTotalKnown: boolean
   createdAt: string
   items: {
     id: number

@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { OrderStatus } from '@prisma/client'
 import { prisma } from '../../db.js'
 import { idParamsSchema } from '../../lib/schemas.js'
+import { getOrderPricing } from '../../lib/orderPricing.js'
 
 const DATE_RE = '^\\d{4}-\\d{2}-\\d{2}$'
 const ordersListQuerySchema = {
@@ -31,8 +32,8 @@ const RU_STATUS = Object.fromEntries(
 
 const DELIVERY_RU: Record<string, string> = {
   PICKUP: 'Самовывоз',
-  DELIVERY: 'Доставка',
-  REGION_SHIPPING: 'Отправка в регион',
+  DELIVERY: 'Доставка по Москве',
+  REGION_SHIPPING: 'Отправка в другой город',
 }
 
 export const adminOrdersRoutes: FastifyPluginAsync = async (fastify) => {
@@ -77,15 +78,23 @@ export const adminOrdersRoutes: FastifyPluginAsync = async (fastify) => {
     ])
 
     return {
-      data: rows.map((o) => ({
-        id: o.id,
-        name: o.name,
-        phone: o.phone,
-        status: STATUS_RU[o.status],
-        totalPrice: o.totalPrice,
-        itemsCount: o._count.items,
-        createdAt: o.createdAt,
-      })),
+      data: rows.map((o) => {
+        const pricing = getOrderPricing(
+          o.totalPrice,
+          o.deliveryMethod,
+          o.deliveryZone,
+          o.deliveryCost
+        )
+        return {
+          id: o.id,
+          name: o.name,
+          phone: o.phone,
+          status: STATUS_RU[o.status],
+          ...pricing,
+          itemsCount: o._count.items,
+          createdAt: o.createdAt,
+        }
+      }),
       total,
       page,
       limit,
@@ -119,6 +128,13 @@ export const adminOrdersRoutes: FastifyPluginAsync = async (fastify) => {
     })
     if (!order) return reply.status(404).send({ error: 'Заказ не найден' })
 
+    const pricing = getOrderPricing(
+      order.totalPrice,
+      order.deliveryMethod,
+      order.deliveryZone,
+      order.deliveryCost
+    )
+
     return {
       data: {
         id: order.id,
@@ -126,6 +142,7 @@ export const adminOrdersRoutes: FastifyPluginAsync = async (fastify) => {
         phone: order.phone,
         email: order.email,
         deliveryMethod: DELIVERY_RU[order.deliveryMethod] || order.deliveryMethod,
+        deliveryZone: order.deliveryZone,
         transportCompany: order.transportCompany,
         city: order.city,
         street: order.street,
@@ -133,7 +150,7 @@ export const adminOrdersRoutes: FastifyPluginAsync = async (fastify) => {
         apartment: order.apartment,
         comment: order.comment,
         status: STATUS_RU[order.status],
-        totalPrice: order.totalPrice,
+        ...pricing,
         createdAt: order.createdAt,
         items: order.items.map((it) => ({
           id: it.id,

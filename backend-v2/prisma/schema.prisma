@@ -75,6 +75,8 @@ model Order {
   phone            String         @db.VarChar(255)
   email            String         @db.VarChar(255)
   deliveryMethod   DeliveryMethod @map("delivery_method")
+  deliveryZone     String?        @map("delivery_zone") @db.VarChar(32)
+  deliveryCost     Float?         @map("delivery_cost")
   transportCompany String?        @map("transport_company") @db.VarChar(255)
   city             String?        @db.VarChar(255)
   street           String?        @db.VarChar(255)
