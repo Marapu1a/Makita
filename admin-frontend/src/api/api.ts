@@ -158,7 +158,7 @@ export interface Summary {
 }
 
 export interface PricesStatus {
-  files: Record<'result' | 'site', { uploaded: boolean; uploadedAt: string | null; size: number | null }>
+  files: Record<'result', { uploaded: boolean; uploadedAt: string | null; size: number | null }>
   lastRunAt: string | null
   running: boolean
 }
@@ -255,10 +255,10 @@ export const fetchSummary = () => get<{ data: Summary }>('/api/v2/admin/system/s
 
 export const fetchPricesStatus = () => get<{ data: PricesStatus }>('/api/v2/admin/prices/status')
 
-export const uploadPriceFile = async (kind: 'result' | 'site', file: File) => {
+export const uploadPriceFile = async (file: File) => {
   const fd = new FormData()
   fd.append('file', file)
-  return request<{ success: true; message: string }>(`/api/v2/admin/prices/upload/${kind}`, {
+  return request<{ success: true; message: string }>('/api/v2/admin/prices/upload/result', {
     method: 'POST',
     body: fd,
   })

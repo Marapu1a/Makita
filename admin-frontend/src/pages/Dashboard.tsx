@@ -59,10 +59,6 @@ const UPLOAD_META = {
     title: "1. Основной файл — result.xlsx",
     hint: "Лист «обновление цен и наличия», колонка «цена для физлиц», обязателен",
   },
-  site: {
-    title: "2. Выгрузка центрального сайта — makita_site_update.xlsx",
-    hint: "Лист «Для импорта», применяется поверх, необязателен",
-  },
 } as const;
 
 const Dashboard = () => {
@@ -73,7 +69,6 @@ const Dashboard = () => {
   const [report, setReport] = useState<string | null>(null);
   // React 18: useRef<T | null>(null) => MutableRefObject<T | null>
   const resultRef = useRef<HTMLInputElement | null>(null);
-  const siteRef = useRef<HTMLInputElement | null>(null);
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
 
@@ -93,11 +88,11 @@ const Dashboard = () => {
     reload();
   }, [reload]);
 
-  const handleFile = async (kind: "result" | "site", file: File | undefined | null) => {
+  const handleFile = async (file: File | undefined | null) => {
     if (!file) return;
     setBusy(true);
     try {
-      await uploadPriceFile(kind, file);
+      await uploadPriceFile(file);
       toast("success", `Файл ${file.name} загружен`);
       await reload();
     } catch (e) {
@@ -137,13 +132,13 @@ const Dashboard = () => {
     }
   };
 
-  const uploadBlock = (kind: "result" | "site", inputRef: React.MutableRefObject<HTMLInputElement | null>) => {
-    const file = prices?.files[kind];
+  const uploadBlock = (inputRef: React.MutableRefObject<HTMLInputElement | null>) => {
+    const file = prices?.files.result;
     return (
       <div className="flex items-center justify-between border border-gray-200 p-4">
         <div>
-          <div className="text-sm font-semibold">{UPLOAD_META[kind].title}</div>
-          <div className="mt-0.5 text-xs text-gray-500">{UPLOAD_META[kind].hint}</div>
+          <div className="text-sm font-semibold">{UPLOAD_META.result.title}</div>
+          <div className="mt-0.5 text-xs text-gray-500">{UPLOAD_META.result.hint}</div>
           {file?.uploaded && (
             <div className="mt-1 text-xs font-semibold text-makita">
               Загружен {fmtDate(file.uploadedAt)} · {fmtSize(file.size)}
@@ -156,7 +151,7 @@ const Dashboard = () => {
           hidden
           accept=".xlsx"
           onChange={(e) => {
-            handleFile(kind, e.target.files?.[0]);
+            handleFile(e.target.files?.[0]);
             e.target.value = "";
           }}
         />
@@ -207,15 +202,14 @@ const Dashboard = () => {
           Последний прогон: <span className="font-semibold text-ink">{fmtDate(summary?.lastPriceRunAt ?? null)}</span>
         </p>
         <div className="space-y-3">
-          {uploadBlock("result", resultRef)}
-          {uploadBlock("site", siteRef)}
+          {uploadBlock(resultRef)}
           <div className="flex items-center gap-4">
             <button
               onClick={handleRun}
               disabled={busy || !prices?.files.result.uploaded}
               className="btn-primary"
             >
-              {busy ? "Работаю…" : "3. Обновить базу"}
+              {busy ? "Работаю…" : "2. Обновить базу"}
             </button>
             {!prices?.files.result.uploaded && (
               <span className="text-sm text-gray-400">Сначала загрузите result.xlsx</span>

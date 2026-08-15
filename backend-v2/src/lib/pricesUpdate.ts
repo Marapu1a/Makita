@@ -4,11 +4,10 @@ import { join } from 'path'
 import { prisma } from '../db.js'
 import { UPLOADS_DIR, PRICE_ARCHIVE_DIR, PRICE_FILES } from './adminStorage.js'
 
-// Порт prices_update.py: обновление цен и наличия из двух xlsx.
-//   1. result.xlsx (лист «обновление цен и наличия») — основной источник
-//   2. makita_site_update.xlsx (лист «Для импорта») — применяется ПОВЕРХ
-// Детали, отсутствующие в обоих файлах, не трогаются.
-// После успешного прогона файлы уезжают в архив с таймстампом.
+// Обновление цен и наличия из result.xlsx
+// (лист «обновление цен и наличия»).
+// Детали, отсутствующие в файле, не трогаются.
+// После успешного прогона файл уезжает в архив с таймстампом.
 //
 // ВАЖНО: читаем потоковым ExcelJS.stream.xlsx.WorkbookReader, а не
 // Workbook.xlsx.readFile(). Обычный ридер строит в памяти полную DOM-модель
@@ -43,8 +42,7 @@ function cellNumber(value: ExcelJS.CellValue): number | null {
 }
 
 // exceljs WorkbookReader отдаёт Row только внутри итерации, поэтому разбор
-// строки — inline-колбэк на месте в каждой функции, без общей абстракции
-// (она усложнила бы типизацию без реальной выгоды при всего двух форматах файла).
+// строки — inline-колбэк в loadByColumns.
 
 // Найти нужный лист среди листов книги.
 // ВАЖНО: в потоковом режиме (worksheets: 'emit') exceljs не успевает
@@ -80,7 +78,7 @@ async function loadByColumns(path: string, requiredCols: string[], fileLabel: st
       }
       if (!colByName) continue // не наш лист — строки пропускаем, не разбирая
 
-      rows.push(parseRow(row, colByName, requiredCols))
+      rows.push(parseRow(row, colByName))
     }
   }
 
@@ -88,21 +86,13 @@ async function loadByColumns(path: string, requiredCols: string[], fileLabel: st
   return rows
 }
 
-function parseRow(row: ExcelJS.Row, col: Record<string, number>, requiredCols: string[]): ImportRow {
+function parseRow(row: ExcelJS.Row, col: Record<string, number>): ImportRow {
   const pn = cellText(row.getCell(col['Артикул']).value).trim()
-  // result.xlsx: доступно (наличие) Y/пусто + доступно (кол-во)
-  // makita_site_update.xlsx: только Количество (наличие = количество > 0)
-  if (requiredCols.includes('доступно (наличие)')) {
-    let price = cellNumber(row.getCell(col[RESULT_PRICE_COL]).value)
-    if (price !== null && price <= 0) price = null
-    const availability = cellText(row.getCell(col['доступно (наличие)']).value).trim().toUpperCase() === 'Y'
-    const quantity = Math.trunc(cellNumber(row.getCell(col['доступно (кол-во)']).value) ?? 0)
-    return { part_number: pn, price, availability, quantity }
-  }
-  let price = cellNumber(row.getCell(col['Цена']).value)
+  let price = cellNumber(row.getCell(col[RESULT_PRICE_COL]).value)
   if (price !== null && price <= 0) price = null
-  const quantity = Math.trunc(cellNumber(row.getCell(col['Количество']).value) ?? 0)
-  return { part_number: pn, price, availability: quantity > 0, quantity }
+  const availability = cellText(row.getCell(col['доступно (наличие)']).value).trim().toUpperCase() === 'Y'
+  const quantity = Math.trunc(cellNumber(row.getCell(col['доступно (кол-во)']).value) ?? 0)
+  return { part_number: pn, price, availability, quantity }
 }
 
 async function loadResult(path: string): Promise<ImportRow[]> {
@@ -111,11 +101,6 @@ async function loadResult(path: string): Promise<ImportRow[]> {
     ['Артикул', 'доступно (наличие)', 'доступно (кол-во)', RESULT_PRICE_COL],
     'result.xlsx'
   )
-  return rows.filter((r) => r.part_number)
-}
-
-async function loadSite(path: string): Promise<ImportRow[]> {
-  const rows = await loadByColumns(path, ['Артикул', 'Количество', 'Цена'], 'makita_site_update.xlsx')
   return rows.filter((r) => r.part_number)
 }
 
@@ -172,7 +157,6 @@ function archive(path: string): void {
 
 export async function runPricesUpdate(): Promise<string> {
   const resultPath = join(UPLOADS_DIR, PRICE_FILES.result)
-  const sitePath = join(UPLOADS_DIR, PRICE_FILES.site)
 
   if (!existsSync(resultPath)) {
     throw new Error('Файл result.xlsx не загружен')
@@ -184,13 +168,6 @@ export async function runPricesUpdate(): Promise<string> {
   const resultRows = await loadResult(resultPath)
   await applyRows(resultRows, 'result.xlsx', report)
 
-  if (existsSync(sitePath)) {
-    const siteRows = await loadSite(sitePath)
-    await applyRows(siteRows, 'makita_site_update.xlsx (поверх)', report)
-  } else {
-    report.push('makita_site_update.xlsx: не загружен, шаг пропущен')
-  }
-
   const [total, allParts] = await Promise.all([
     prisma.part.count({ where: { updatedAt: { gte: startedAt } } }),
     prisma.part.count(),
@@ -198,8 +175,7 @@ export async function runPricesUpdate(): Promise<string> {
   report.push(`ИТОГО: обновлено ${total} из ${allParts} деталей каталога`)
 
   archive(resultPath)
-  archive(sitePath)
-  report.push('Файлы перемещены в архив. Готово.')
+  report.push('Файл перемещён в архив. Готово.')
 
   return report.join('\n')
 }

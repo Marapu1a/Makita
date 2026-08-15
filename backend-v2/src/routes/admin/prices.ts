@@ -34,7 +34,7 @@ export const adminPricesRoutes: FastifyPluginAsync = async (fastify) => {
     return { data: { files, lastRunAt, running: updateRunning } }
   })
 
-  // POST /upload/:kind — загрузка xlsx (kind = result | site)
+  // POST /upload/:kind — загрузка xlsx (kind = result)
   fastify.post<{ Params: { kind: string } }>('/upload/:kind', async (req, reply) => {
     const kind = req.params.kind as PriceKind
     const targetName = PRICE_FILES[kind]

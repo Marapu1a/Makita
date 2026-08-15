@@ -16,7 +16,6 @@ for (const dir of [UPLOADS_DIR, PRICE_ARCHIVE_DIR, DB_BACKUPS_DIR]) {
 // Имена файлов прайсов по типу загрузки
 export const PRICE_FILES = {
   result: 'result.xlsx', // основной источник (обязателен)
-  site: 'makita_site_update.xlsx', // выгрузка центрального сайта (поверх, опционален)
 } as const
 
 export type PriceKind = keyof typeof PRICE_FILES
