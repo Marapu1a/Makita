@@ -5,10 +5,19 @@ import { fmtPrice } from '../lib/format'
 const TRANSPORT_COMPANIES = ['СДЭК', 'Почта России', 'DPD', 'Boxberry', 'ПЭК', 'Деловые Линии']
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-const MOSCOW_DELIVERY_COST = 350
 const PREPAYMENT_THRESHOLD = 2000
+const FREE_DELIVERY_THRESHOLD = 50_000
+const TRANSPORT_COMPANY_DELIVERY_COST = 500
+const OUTSIDE_MKAD_RATE_PER_KM = 75
 
-type DeliveryZone = 'WITHIN_MKAD' | 'OUTSIDE_MKAD'
+type DeliveryZone = 'MKAD_TO_TTK' | 'TTK_TO_GARDEN' | 'INSIDE_GARDEN' | 'OUTSIDE_MKAD'
+
+const MOSCOW_ZONE_COSTS: Record<DeliveryZone, number> = {
+  MKAD_TO_TTK: 500,
+  TTK_TO_GARDEN: 600,
+  INSIDE_GARDEN: 700,
+  OUTSIDE_MKAD: 500,
+}
 
 interface OrderResult {
   success: boolean
@@ -16,6 +25,8 @@ interface OrderResult {
   orderId?: number
   itemsTotal?: number
   deliveryCost?: number | null
+  deliveryRatePerKm?: number | null
+  deliveryIsFree?: boolean
   knownTotal?: number
   finalTotalKnown?: boolean
   deliveryMethod?: string
@@ -35,6 +46,10 @@ function OrderTerms({ itemsTotal }: { itemsTotal: number }) {
   return (
     <div className="border-l-4 border-amber-500 bg-amber-50 px-3 py-2 text-sm">
       <p className="font-medium">Срок поставки запчастей — 2–5 рабочих дней.</p>
+      <p className="mt-1">
+        При сумме товаров от 50 000 ₽ доставка в пределах МКАД и до транспортной
+        компании бесплатная.
+      </p>
       {itemsTotal >= PREPAYMENT_THRESHOLD && (
         <p className="mt-1">
           При сумме заказа от 2 000 ₽ может потребоваться предоплата. Необходимость и
@@ -48,12 +63,16 @@ function OrderTerms({ itemsTotal }: { itemsTotal: number }) {
 function PricingSummary({
   itemsTotal,
   deliveryCost,
+  deliveryRatePerKm,
+  deliveryIsFree,
   deliveryZone,
   isRegion,
   finalTotalKnown,
 }: {
   itemsTotal: number
   deliveryCost: number | null
+  deliveryRatePerKm?: number | null
+  deliveryIsFree?: boolean
   deliveryZone?: DeliveryZone | null
   isRegion?: boolean
   finalTotalKnown: boolean
@@ -67,20 +86,28 @@ function PricingSummary({
       </div>
       {deliveryCost !== null && deliveryCost > 0 && (
         <div className="mt-1 flex justify-between gap-4">
-          <span>Доставка</span>
+          <span>{isRegion ? 'Доставка до ТК' : 'Доставка'}</span>
           <span>{fmtPrice(deliveryCost)}</span>
+        </div>
+      )}
+      {deliveryIsFree && (
+        <div className="mt-1 flex justify-between gap-4">
+          <span>{isRegion ? 'Доставка до ТК' : 'Доставка'}</span>
+          <span className="font-medium text-green-700">Бесплатно</span>
         </div>
       )}
       {deliveryZone === 'OUTSIDE_MKAD' && (
         <div className="mt-1 flex justify-between gap-4">
           <span>Доплата за МКАД</span>
-          <span className="text-right">рассчитает менеджер (50 ₽/км)</span>
+          <span className="text-right">
+            рассчитает менеджер ({fmtPrice(deliveryRatePerKm ?? OUTSIDE_MKAD_RATE_PER_KM)}/км)
+          </span>
         </div>
       )}
       {isRegion && (
         <div className="mt-1 flex justify-between gap-4">
-          <span>Доставка</span>
-          <span className="text-right">рассчитает менеджер после звонка</span>
+          <span>Перевозка транспортной компанией</span>
+          <span className="text-right">рассчитывается отдельно по тарифу ТК</span>
         </div>
       )}
       <div className="mt-2 flex items-baseline justify-between gap-4 font-medium">
@@ -143,7 +170,7 @@ function OrderModal({
     phone: '',
     email: '',
     delivery_method: 'Самовывоз',
-    delivery_zone: 'WITHIN_MKAD' as DeliveryZone,
+    delivery_zone: 'MKAD_TO_TTK' as DeliveryZone,
     transport_company: '',
     city: '',
     street: '',
@@ -228,10 +255,25 @@ function OrderModal({
 
   const isMoscowDelivery = formData.delivery_method === 'Доставка'
   const isRegion = formData.delivery_method === 'Отправка в регион'
-  const selectedDeliveryCost = isMoscowDelivery ? MOSCOW_DELIVERY_COST : formData.delivery_method === 'Самовывоз' ? 0 : null
+  const freeByOrderTotal = totalPrice >= FREE_DELIVERY_THRESHOLD
+  const selectedDeliveryCost = formData.delivery_method === 'Самовывоз'
+    ? 0
+    : isRegion
+      ? freeByOrderTotal ? 0 : TRANSPORT_COMPANY_DELIVERY_COST
+      : isMoscowDelivery
+        ? formData.delivery_zone !== 'OUTSIDE_MKAD' && freeByOrderTotal
+          ? 0
+          : MOSCOW_ZONE_COSTS[formData.delivery_zone]
+        : null
+  const selectedDeliveryRatePerKm =
+    isMoscowDelivery && formData.delivery_zone === 'OUTSIDE_MKAD'
+      ? OUTSIDE_MKAD_RATE_PER_KM
+      : null
+  const selectedDeliveryIsFree = freeByOrderTotal &&
+    (isRegion || (isMoscowDelivery && formData.delivery_zone !== 'OUTSIDE_MKAD'))
   const finalTotalKnown =
     formData.delivery_method === 'Самовывоз' ||
-    (isMoscowDelivery && formData.delivery_zone === 'WITHIN_MKAD')
+    (isMoscowDelivery && formData.delivery_zone !== 'OUTSIDE_MKAD')
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 overflow-y-auto p-4">
@@ -269,32 +311,37 @@ function OrderModal({
           <>
             <Field label="Зона доставки" required>
               <select name="delivery_zone" value={formData.delivery_zone} onChange={handleChange} className={inputCls()}>
-                <option value="WITHIN_MKAD">В пределах МКАД — 350 ₽</option>
-                <option value="OUTSIDE_MKAD">За МКАД — 350 ₽ + 50 ₽/км</option>
+                <option value="MKAD_TO_TTK">От МКАД до ТТК — {freeByOrderTotal ? 'бесплатно' : '500 ₽'}</option>
+                <option value="TTK_TO_GARDEN">От ТТК до Садового кольца — {freeByOrderTotal ? 'бесплатно' : '600 ₽'}</option>
+                <option value="INSIDE_GARDEN">Внутри Садового кольца — {freeByOrderTotal ? 'бесплатно' : '700 ₽'}</option>
+                <option value="OUTSIDE_MKAD">За МКАД — 500 ₽ + 75 ₽/км</option>
               </select>
             </Field>
-            <p className="mb-3 text-xs text-gray-500">
-              Расстояние за МКАД и доплату рассчитает менеджер.
-            </p>
+            {formData.delivery_zone === 'OUTSIDE_MKAD' && (
+              <p className="mb-3 text-xs text-gray-500">
+                Расстояние за МКАД и доплату 75 ₽/км рассчитает менеджер.
+              </p>
+            )}
           </>
         )}
 
         {isRegion && (
           <>
-          <Field label="Город" required error={errors.city}>
-            <input type="text" name="city" autoComplete="address-level2" value={formData.city} onChange={handleChange} className={inputCls(errors.city)} />
-          </Field>
-          <Field label="Транспортная компания">
-            <select name="transport_company" value={formData.transport_company} onChange={handleChange} className={inputCls()}>
-              <option value="">— выберите —</option>
-              {TRANSPORT_COMPANIES.map((company) => (
-                <option key={company} value={company}>{company}</option>
-              ))}
-            </select>
-          </Field>
-          <p className="mb-3 text-xs text-gray-500">
-            Стоимость отправки рассчитает менеджер после звонка.
-          </p>
+            <Field label="Город" required error={errors.city}>
+              <input type="text" name="city" autoComplete="address-level2" value={formData.city} onChange={handleChange} className={inputCls(errors.city)} />
+            </Field>
+            <Field label="Транспортная компания">
+              <select name="transport_company" value={formData.transport_company} onChange={handleChange} className={inputCls()}>
+                <option value="">— выберите —</option>
+                {TRANSPORT_COMPANIES.map((company) => (
+                  <option key={company} value={company}>{company}</option>
+                ))}
+              </select>
+            </Field>
+            <p className="mb-3 text-xs text-gray-500">
+              Доставка до терминала ТК — {freeByOrderTotal ? 'бесплатно' : '500 ₽'}.
+              Перевозка до города рассчитывается отдельно по тарифу транспортной компании.
+            </p>
           </>
         )}
 
@@ -327,6 +374,8 @@ function OrderModal({
           <PricingSummary
             itemsTotal={totalPrice}
             deliveryCost={selectedDeliveryCost}
+            deliveryRatePerKm={selectedDeliveryRatePerKm}
+            deliveryIsFree={selectedDeliveryIsFree}
             deliveryZone={isMoscowDelivery ? formData.delivery_zone : null}
             isRegion={isRegion}
             finalTotalKnown={finalTotalKnown}
@@ -410,6 +459,8 @@ function OrderConfirmationModal({
         <PricingSummary
           itemsTotal={itemsTotal}
           deliveryCost={order.deliveryCost ?? null}
+          deliveryRatePerKm={order.deliveryRatePerKm}
+          deliveryIsFree={order.deliveryIsFree}
           deliveryZone={order.deliveryZone}
           isRegion={isRegion}
           finalTotalKnown={order.finalTotalKnown ?? false}

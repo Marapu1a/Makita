@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer'
 import {
+  FREE_DELIVERY_THRESHOLD,
   PREPAYMENT_THRESHOLD,
   getDeliveryZoneLabel,
   getOrderPricing,
@@ -46,6 +47,7 @@ export interface OrderNotificationData {
   deliveryLabel: string
   deliveryZone?: string | null
   deliveryCost?: number | null
+  deliveryRatePerKm?: number | null
   transportCompany?: string | null
   city?: string | null
   street?: string | null
@@ -74,16 +76,17 @@ function getAddress(order: OrderNotificationData): string {
 function buildDeliveryDetailsHtml(order: OrderNotificationData): string {
   const zone = getDeliveryZoneLabel(order.deliveryZone)
   const isRegion = order.deliveryLabel === 'Отправка в регион' || order.deliveryLabel === 'Отправка в другой город'
+  const ratePerKm = order.deliveryRatePerKm ?? 50
   return `
     ${zone ? `<div style="margin-bottom:5px"><strong>Зона доставки:</strong> ${esc(zone)}</div>` : ''}
     ${
       order.deliveryZone === 'OUTSIDE_MKAD'
-        ? '<div style="margin-bottom:5px"><strong>Доплата за МКАД:</strong> 50 ₽/км, расстояние и сумму рассчитает менеджер</div>'
+        ? `<div style="margin-bottom:5px"><strong>Доплата за МКАД:</strong> ${fmtPrice(ratePerKm)}/км, расстояние и сумму рассчитает менеджер</div>`
         : ''
     }
     ${
       isRegion
-        ? '<div style="margin-bottom:5px"><strong>Стоимость доставки:</strong> рассчитает менеджер после звонка</div>'
+        ? '<div style="margin-bottom:5px"><strong>Перевозка транспортной компанией:</strong> рассчитывается отдельно по тарифу ТК</div>'
         : ''
     }
   `
@@ -94,25 +97,28 @@ function buildTotalsHtml(order: OrderNotificationData): string {
     order.itemsTotal,
     order.deliveryLabel,
     order.deliveryZone,
-    order.deliveryCost
+    order.deliveryCost,
+    order.deliveryRatePerKm
   )
   const isRegion = order.deliveryLabel === 'Отправка в регион' || order.deliveryLabel === 'Отправка в другой город'
   return `
     <div style="margin:14px 0 20px;text-align:right;line-height:1.7">
       <div>Товары: <strong>${fmtPrice(pricing.itemsTotal)}</strong></div>
       ${
-        pricing.deliveryCost !== null && pricing.deliveryCost > 0
-          ? `<div>Доставка: <strong>${fmtPrice(pricing.deliveryCost)}</strong></div>`
-          : ''
+        pricing.deliveryIsFree
+          ? `<div>${isRegion ? 'Доставка до ТК' : 'Доставка'}: <strong>бесплатно</strong></div>`
+          : pricing.deliveryCost !== null && pricing.deliveryCost > 0
+            ? `<div>${isRegion ? 'Доставка до ТК' : 'Доставка'}: <strong>${fmtPrice(pricing.deliveryCost)}</strong></div>`
+            : ''
       }
       ${
         order.deliveryZone === 'OUTSIDE_MKAD'
-          ? '<div>Доплата за МКАД: <strong>рассчитает менеджер (50 ₽/км)</strong></div>'
+          ? `<div>Доплата за МКАД: <strong>рассчитает менеджер (${fmtPrice(pricing.deliveryRatePerKm ?? 50)}/км)</strong></div>`
           : ''
       }
       ${
         isRegion
-          ? '<div>Доставка: <strong>рассчитает менеджер после звонка</strong></div>'
+          ? '<div>Перевозка транспортной компанией: <strong>рассчитывается отдельно по тарифу ТК</strong></div>'
           : ''
       }
       <div style="font-size:18px;font-weight:bold;margin-top:5px">
@@ -126,6 +132,7 @@ function buildTermsHtml(order: OrderNotificationData): string {
   return `
     <div style="margin:18px 0;padding:12px 14px;background:#fff8e5;border-left:4px solid #d49b00">
       <div><strong>Срок поставки запчастей — 2–5 рабочих дней.</strong></div>
+      <div style="margin-top:6px">При сумме товаров от ${fmtPrice(FREE_DELIVERY_THRESHOLD)} доставка в пределах МКАД и до транспортной компании бесплатная.</div>
       ${
         order.itemsTotal >= PREPAYMENT_THRESHOLD
           ? '<div style="margin-top:6px">При сумме заказа от 2 000 ₽ может потребоваться предоплата. Необходимость и размер предоплаты сообщит менеджер при подтверждении заказа.</div>'
@@ -140,19 +147,22 @@ function buildTotalsText(order: OrderNotificationData): string[] {
     order.itemsTotal,
     order.deliveryLabel,
     order.deliveryZone,
-    order.deliveryCost
+    order.deliveryCost,
+    order.deliveryRatePerKm
   )
   const isRegion = order.deliveryLabel === 'Отправка в регион' || order.deliveryLabel === 'Отправка в другой город'
   return [
     `Товары: ${fmtPrice(pricing.itemsTotal)}`,
-    pricing.deliveryCost !== null && pricing.deliveryCost > 0
-      ? `Доставка: ${fmtPrice(pricing.deliveryCost)}`
-      : null,
+    pricing.deliveryIsFree
+      ? `${isRegion ? 'Доставка до ТК' : 'Доставка'}: бесплатно`
+      : pricing.deliveryCost !== null && pricing.deliveryCost > 0
+        ? `${isRegion ? 'Доставка до ТК' : 'Доставка'}: ${fmtPrice(pricing.deliveryCost)}`
+        : null,
     order.deliveryZone === 'OUTSIDE_MKAD'
-      ? 'Доплата за МКАД: рассчитает менеджер (50 ₽/км)'
+      ? `Доплата за МКАД: рассчитает менеджер (${fmtPrice(pricing.deliveryRatePerKm ?? 50)}/км)`
       : null,
     isRegion
-      ? 'Доставка: рассчитает менеджер после звонка'
+      ? 'Перевозка транспортной компанией: рассчитывается отдельно по тарифу ТК'
       : null,
     `${pricing.finalTotalKnown ? 'Итого' : 'Известная сумма'}: ${fmtPrice(pricing.knownTotal)}`,
   ].filter((line): line is string => Boolean(line))
@@ -257,10 +267,10 @@ function buildCustomerText(order: OrderNotificationData): string {
     `Способ получения: ${order.deliveryLabel}`,
     order.deliveryZone ? `Зона доставки: ${getDeliveryZoneLabel(order.deliveryZone)}` : null,
     order.deliveryZone === 'OUTSIDE_MKAD'
-      ? 'Доплата за МКАД: 50 ₽/км, расстояние и сумму рассчитает менеджер'
+      ? `Доплата за МКАД: ${fmtPrice(order.deliveryRatePerKm ?? 50)}/км, расстояние и сумму рассчитает менеджер`
       : null,
     order.deliveryLabel === 'Отправка в регион' || order.deliveryLabel === 'Отправка в другой город'
-      ? 'Стоимость доставки: рассчитает менеджер после звонка'
+      ? 'Перевозка транспортной компанией: рассчитывается отдельно по тарифу ТК'
       : null,
     order.transportCompany ? `Транспортная компания: ${order.transportCompany}` : null,
     address ? `Адрес: ${address}` : null,
@@ -289,6 +299,7 @@ function buildCustomerText(order: OrderNotificationData): string {
     ...buildTotalsText(order),
     '',
     'Срок поставки запчастей — 2–5 рабочих дней.',
+    `При сумме товаров от ${fmtPrice(FREE_DELIVERY_THRESHOLD)} доставка в пределах МКАД и до транспортной компании бесплатная.`,
     order.itemsTotal >= PREPAYMENT_THRESHOLD
       ? 'При сумме заказа от 2 000 ₽ может потребоваться предоплата. Необходимость и размер предоплаты сообщит менеджер при подтверждении заказа.'
       : null,

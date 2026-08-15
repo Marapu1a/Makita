@@ -77,6 +77,7 @@ model Order {
   deliveryMethod   DeliveryMethod @map("delivery_method")
   deliveryZone     String?        @map("delivery_zone") @db.VarChar(32)
   deliveryCost     Float?         @map("delivery_cost")
+  deliveryRatePerKm Float?        @map("delivery_rate_per_km")
   transportCompany String?        @map("transport_company") @db.VarChar(255)
   city             String?        @db.VarChar(255)
   street           String?        @db.VarChar(255)

@@ -45,6 +45,8 @@ export interface OrderRow {
   status: string
   itemsTotal: number
   deliveryCost: number | null
+  deliveryRatePerKm: number | null
+  deliveryIsFree: boolean
   knownTotal: number
   finalTotalKnown: boolean
   itemsCount: number
@@ -59,6 +61,8 @@ export interface OrderDetail {
   deliveryMethod: string
   deliveryZone: string | null
   deliveryCost: number | null
+  deliveryRatePerKm: number | null
+  deliveryIsFree: boolean
   transportCompany: string | null
   city: string | null
   street: string | null

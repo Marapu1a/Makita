@@ -1,8 +1,14 @@
 import type { OrderDetail } from "../api/api";
 
 const fmtPrice = (v: number) => `${Math.round(v).toLocaleString("ru-RU")} ₽`;
-const deliveryZoneLabel = (zone: string | null) =>
-  zone === "WITHIN_MKAD" ? "В пределах МКАД" : zone === "OUTSIDE_MKAD" ? "За МКАД" : null;
+const deliveryZoneLabel = (zone: string | null) => {
+  if (zone === "WITHIN_MKAD") return "В пределах МКАД";
+  if (zone === "MKAD_TO_TTK") return "От МКАД до ТТК";
+  if (zone === "TTK_TO_GARDEN") return "От ТТК до Садового кольца";
+  if (zone === "INSIDE_GARDEN") return "Внутри Садового кольца";
+  if (zone === "OUTSIDE_MKAD") return "За МКАД";
+  return null;
+};
 
 const Row = ({ label, value }: { label: string; value: string | null }) =>
   value ? (
@@ -97,14 +103,29 @@ const OrderModal = ({ order, onClose }: { order: OrderDetail; onClose: () => voi
 
         <div className="ml-auto max-w-md space-y-1 text-right text-sm">
           <div>Товары: <strong>{fmtPrice(order.itemsTotal)}</strong></div>
+          {order.deliveryIsFree && (
+            <div>
+              {order.deliveryMethod === "Отправка в другой город" ? "Доставка до ТК" : "Доставка"}:
+              {" "}<strong>бесплатно</strong>
+            </div>
+          )}
           {order.deliveryCost !== null && order.deliveryCost > 0 && (
-            <div>Доставка: <strong>{fmtPrice(order.deliveryCost)}</strong></div>
+            <div>
+              {order.deliveryMethod === "Отправка в другой город" ? "Доставка до ТК" : "Доставка"}:
+              {" "}<strong>{fmtPrice(order.deliveryCost)}</strong>
+            </div>
           )}
           {order.deliveryZone === "OUTSIDE_MKAD" && (
-            <div>Доплата за МКАД: <strong>рассчитает менеджер (50 ₽/км)</strong></div>
+            <div>
+              Доплата за МКАД:{" "}
+              <strong>рассчитает менеджер ({fmtPrice(order.deliveryRatePerKm ?? 50)}/км)</strong>
+            </div>
           )}
           {order.deliveryMethod === "Отправка в другой город" && (
-            <div>Доставка: <strong>рассчитает менеджер после звонка</strong></div>
+            <div>
+              Перевозка транспортной компанией:{" "}
+              <strong>рассчитывается отдельно по тарифу ТК</strong>
+            </div>
           )}
           <div className="pt-1 text-base font-bold">
             {order.finalTotalKnown ? "Итого" : "Известная сумма"}: {fmtPrice(order.knownTotal)}
@@ -113,6 +134,10 @@ const OrderModal = ({ order, onClose }: { order: OrderDetail; onClose: () => voi
 
         <div className="mt-5 border-l-4 border-amber-500 bg-amber-50 px-3 py-2 text-sm">
           <div className="font-semibold">Срок поставки запчастей — 2–5 рабочих дней.</div>
+          <div className="mt-1">
+            При сумме товаров от 50 000 ₽ доставка в пределах МКАД и до транспортной
+            компании бесплатная.
+          </div>
           {order.itemsTotal >= 2000 && (
             <div className="mt-1">
               При сумме заказа от 2 000 ₽ может потребоваться предоплата. Необходимость и

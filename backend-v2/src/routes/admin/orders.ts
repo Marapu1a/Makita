@@ -83,7 +83,8 @@ export const adminOrdersRoutes: FastifyPluginAsync = async (fastify) => {
           o.totalPrice,
           o.deliveryMethod,
           o.deliveryZone,
-          o.deliveryCost
+          o.deliveryCost,
+          o.deliveryRatePerKm
         )
         return {
           id: o.id,
@@ -132,7 +133,8 @@ export const adminOrdersRoutes: FastifyPluginAsync = async (fastify) => {
       order.totalPrice,
       order.deliveryMethod,
       order.deliveryZone,
-      order.deliveryCost
+      order.deliveryCost,
+      order.deliveryRatePerKm
     )
 
     return {
