@@ -23,6 +23,8 @@ interface ImportRow {
   quantity: number
 }
 
+const RESULT_PRICE_COL = 'цена для физлиц'
+
 function cellText(value: ExcelJS.CellValue): string {
   if (value === null || value === undefined) return ''
   if (typeof value === 'object') {
@@ -91,7 +93,7 @@ function parseRow(row: ExcelJS.Row, col: Record<string, number>, requiredCols: s
   // result.xlsx: доступно (наличие) Y/пусто + доступно (кол-во)
   // makita_site_update.xlsx: только Количество (наличие = количество > 0)
   if (requiredCols.includes('доступно (наличие)')) {
-    let price = cellNumber(row.getCell(col['цена со скидками']).value)
+    let price = cellNumber(row.getCell(col[RESULT_PRICE_COL]).value)
     if (price !== null && price <= 0) price = null
     const availability = cellText(row.getCell(col['доступно (наличие)']).value).trim().toUpperCase() === 'Y'
     const quantity = Math.trunc(cellNumber(row.getCell(col['доступно (кол-во)']).value) ?? 0)
@@ -106,7 +108,7 @@ function parseRow(row: ExcelJS.Row, col: Record<string, number>, requiredCols: s
 async function loadResult(path: string): Promise<ImportRow[]> {
   const rows = await loadByColumns(
     path,
-    ['Артикул', 'доступно (наличие)', 'доступно (кол-во)', 'цена со скидками'],
+    ['Артикул', 'доступно (наличие)', 'доступно (кол-во)', RESULT_PRICE_COL],
     'result.xlsx'
   )
   return rows.filter((r) => r.part_number)

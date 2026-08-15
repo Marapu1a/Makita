@@ -57,7 +57,7 @@ const formatDateParam = (date: Date) => {
 const UPLOAD_META = {
   result: {
     title: "1. Основной файл — result.xlsx",
-    hint: "Лист «обновление цен и наличия», обязателен",
+    hint: "Лист «обновление цен и наличия», колонка «цена для физлиц», обязателен",
   },
   site: {
     title: "2. Выгрузка центрального сайта — makita_site_update.xlsx",
